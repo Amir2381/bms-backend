@@ -1,16 +1,37 @@
 from fastapi import FastAPI, Request, HTTPException
-from models.product import Product, products
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+
+from models.product import (
+    ProductCreate,
+    products,
+)
 
 app = FastAPI()
 
 
+def get_product_or_404(product_id: int):
+    product = products.get(product_id)
+
+    if product is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found",
+        )
+
+    return product
+
+
 @app.post("/products")
-def create_product(product: Product):
+def create_product(product: ProductCreate):
     product_id = len(products) + 1
+
     products[product_id] = product
-    return {"id": product_id, **product.model_dump()}
+
+    return {
+        "id": product_id,
+        **product.model_dump(),
+    }
 
 
 @app.get("/products")
@@ -20,46 +41,73 @@ def get_products():
 
 @app.get("/products/{product_id}")
 def get_product(product_id: int):
-    return products.get(product_id, "ERROR: Not found")
+    return get_product_or_404(product_id)
 
 
-@app.post("/products/{product_id}")
-def update_product(product_id: int, product: Product):
+@app.put("/products/{product_id}")
+def update_product(
+    product_id: int,
+    product: ProductCreate,
+):
+    get_product_or_404(product_id)
+
     products[product_id] = product
-    return {"message": "updated", "product": product}
+
+    return {
+        "message": "updated",
+        "product": product,
+    }
 
 
 @app.delete("/products/{product_id}")
 def delete_product(product_id: int):
-    products.pop(product_id, None)
-    return "deleted"
+    get_product_or_404(product_id)
+
+    products.pop(product_id)
+
+    return {"message": "deleted"}
 
 
 @app.exception_handler(HTTPException)
 def http_error_handler(request: Request, exc: HTTPException):
     return JSONResponse(
-        status_code=exc.status_code, content={"success": False, "error": exc.detail}
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error": exc.detail,
+        },
+    )
+
+
+@app.exception_handler(RequestValidationError)
+def validation_error_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "error": "Invalid input",
+            "detail": exc.errors(),
+        },
     )
 
 
 @app.exception_handler(Exception)
 def general_error_handler(request: Request, exc: Exception):
     return JSONResponse(
-        status_code=500, content={"success": False, "error": "Internal server error"}
-    )
-
-
-@app.exception_handler(RequestValidationError)
-def validation_error_handler(request, exc):
-    return JSONResponse(
-        status_code=422,
-        content={"success": False, "error": "Invalid input", "detail": exc.errors()},
+        status_code=500,
+        content={
+            "success": False,
+            "error": "Internal server error",
+        },
     )
 
 
 @app.middleware("http")
 async def log_request(request: Request, call_next):
     print(f"Request: {request.method} {request.url}")
+
     response = await call_next(request)
-    print(f"Response_status: {response.status_code}")
+
+    print(f"Response status: {response.status_code}")
+
     return response

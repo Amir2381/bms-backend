@@ -1,9 +1,17 @@
 from pydantic import BaseModel, Field
 
 
-class Product(BaseModel):
+class ProductBase(BaseModel):
     name: str
-    price: float
+    price: float = Field(gt=0)
 
 
-products = {}
+class ProductCreate(ProductBase):
+    pass
+
+
+class ProductResponse(ProductBase):
+    pass
+
+
+products: dict[int, ProductCreate] = {}

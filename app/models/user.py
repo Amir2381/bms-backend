@@ -11,12 +11,9 @@ class UserLogin(BaseModel):
     password: str = Field(min_length=3)
 
 
-class UserCreate(BaseModel):
-    username: str
-    email: EmailStr
+class UserCreate(UserBase):
     password: str = Field(min_length=3)
 
 
-class UserResponse(BaseModel):
-    username: str
-    email: EmailStr
+class UserResponse(UserBase):
+    pass
