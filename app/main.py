@@ -1,11 +1,14 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from datetime import datetime
 
 from models.product import (
     ProductCreate,
     products,
 )
+
+from models.sale import SaleCreate, Sale, sales
 
 app = FastAPI()
 
@@ -66,6 +69,35 @@ def delete_product(product_id: int):
     products.pop(product_id)
 
     return {"message": "deleted"}
+
+
+@app.post("/sales")
+def create_sale(sale: SaleCreate):
+    product = get_product_or_404(sale.product_id)
+    if product.stock < sale.quantity:
+        raise HTTPException(status_code=400, detail="Not enough stock")
+    product.stock -= sale.quantity
+    products[sale.product_id] = product
+    sale_id = len(sales) + 1
+    new_sale = Sale(
+        id=sale_id,
+        product_id=sale.product_id,
+        quantity=sale.quantity,
+        date=str(datetime.now().date()),
+    )
+    sales[sale_id] = new_sale
+    return new_sale
+
+
+@app.get("/sales")
+def get_sales(date: str | None = None):
+    if date == None:
+        return list(sales.values())
+    filtered_sales = []
+    for sale in sales.values():
+        if sale.date == date:
+            filtered_sales.append(sale)
+    return filtered_sales
 
 
 @app.exception_handler(HTTPException)
