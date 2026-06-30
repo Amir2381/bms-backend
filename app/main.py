@@ -3,12 +3,12 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from datetime import datetime
 
-from models.product import (
+from app.models.product import (
     ProductCreate,
     products,
 )
 
-from models.sale import SaleCreate, Sale, sales
+from schemas.sale import SaleCreate, Sale, sales
 
 app = FastAPI()
 
