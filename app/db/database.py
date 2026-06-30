@@ -10,11 +10,11 @@ class Base(DeclarativeBase):
     pass
 
 
-sessionlocal = sessionmaker(bind=engine)
+SessionLocal = sessionmaker(bind=engine)
 
 
 def get_db():
-    db = sessionlocal()
+    db = SessionLocal()
     try:
         yield db
     finally:
