@@ -7,3 +7,4 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column()
     price: Mapped[float] = mapped_column()
+    stock: Mapped[int] = mapped_column(default=0)

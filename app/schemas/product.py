@@ -14,6 +14,3 @@ class ProductCreate(ProductBase):
 class ProductResponse(BaseModel):
     name: str
     price: float = Field(gt=0)
-
-
-products: dict[int, ProductCreate] = {}
