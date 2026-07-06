@@ -1,16 +1,13 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class SaleCreate(BaseModel):
+    user_id: int
     product_id: int
     quantity: int
 
 
-class Sale(BaseModel):
+class SaleResponse(BaseModel):
     id: int
     product_id: int
     quantity: int
-    date: str
-
-
-sales: dict[int, Sale] = {}

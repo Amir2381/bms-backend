@@ -1,15 +1,24 @@
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import (
+    FastAPI,
+    Request,
+    HTTPException,
+    Depends,
+)
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.repositories import product_repository
+from app.repositories import (
+    product_repository,
+    sale_repository,
+    user_repository,
+)
 from app.models.product import Product
+from app.models.sales import Sale
 from app.schemas.product import ProductCreate
-
-# from schemas.sale import SaleCreate, Sale, sales
+from app.schemas.sale import SaleCreate, SaleResponse
 
 app = FastAPI()
 
@@ -26,9 +35,40 @@ def get_product_or_404(product_id: int, db: Session):
     return product
 
 
+def get_user_or_404(user_id: int, db: Session):
+    user = user_repository.get_user(db, user_id)
+
+    if user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    return user
+
+
+def get_sale_or_404(sale_id: int, db: Session):
+    sale = sale_repository.get_sale(db, sale_id)
+
+    if sale is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Sale not found",
+        )
+
+    return sale
+
+
 @app.post("/products")
-def create_product(product: ProductCreate, db: Session = Depends(get_db)):
-    new_product = Product(name=product.name, price=product.price, stock=product.stock)
+def create_product(
+    product: ProductCreate,
+    db: Session = Depends(get_db),
+):
+    new_product = Product(
+        name=product.name,
+        price=product.price,
+        stock=product.stock,
+    )
 
     return product_repository.create_product(db, new_product)
 
@@ -39,13 +79,18 @@ def get_products(db: Session = Depends(get_db)):
 
 
 @app.get("/products/{product_id}")
-def get_product(product_id: int, db: Session = Depends(get_db)):
+def get_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+):
     return get_product_or_404(product_id, db)
 
 
 @app.put("/products/{product_id}")
 def update_product(
-    product_id: int, product: ProductCreate, db: Session = Depends(get_db)
+    product_id: int,
+    product: ProductCreate,
+    db: Session = Depends(get_db),
 ):
     db_product = get_product_or_404(product_id, db)
     db_product.name = product.name
@@ -56,7 +101,10 @@ def update_product(
 
 
 @app.delete("/products/{product_id}")
-def delete_product(product_id: int, db: Session = Depends(get_db)):
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+):
     product = get_product_or_404(product_id, db)
 
     product_repository.delete_product(db, product)
@@ -64,37 +112,63 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
     return {"message": "deleted"}
 
 
-# @app.post("/sales")
-# def create_sale(sale: SaleCreate):
-#     product = get_product_or_404(sale.product_id)
-#     if product.stock < sale.quantity:
-#         raise HTTPException(status_code=400, detail="Not enough stock")
-#     product.stock -= sale.quantity
-#     products[sale.product_id] = product
-#     sale_id = len(sales) + 1
-#     new_sale = Sale(
-#         id=sale_id,
-#         product_id=sale.product_id,
-#         quantity=sale.quantity,
-#         date=str(datetime.now().date()),
-#     )
-#     sales[sale_id] = new_sale
-#     return new_sale
+@app.post("/sales", response_model=SaleResponse)
+def create_sael(
+    sale: SaleCreate,
+    db: Session = Depends(get_db),
+):
+    get_user_or_404(sale.user_id, db)
+    product = get_product_or_404(sale.product_id, db)
+
+    if product.stock < sale.quantity:
+        raise HTTPException(
+            status_code=400,
+            detail="Not enough stock",
+        )
+
+    product.stock -= sale.quantity
+    product_repository.update_product(db, product)
+
+    new_sale = Sale(
+        user_id=sale.user_id,
+        product_id=sale.product_id,
+        quantity=sale.quantity,
+    )
+
+    return sale_repository.create_sale(db, new_sale)
 
 
-# @app.get("/sales")
-# def get_sales(date: str | None = None):
-#     if date == None:
-#         return list(sales.values())
-#     filtered_sales = []
-#     for sale in sales.values():
-#         if sale.date == date:
-#             filtered_sales.append(sale)
-#     return filtered_sales
+@app.get("/sales", response_model=list[SaleResponse])
+def get_all_sales(db: Session = Depends(get_db)):
+    return sale_repository.get_all_sales(db)
+
+
+@app.get("/sales/{sale_id}", response_model=SaleResponse)
+def get_sale(
+    sale_id: int,
+    db: Session = Depends(get_db),
+):
+    return get_sale_or_404(sale_id, db)
+
+
+@app.delete("/sales/{sale_id}")
+def delete_sale(
+    sale_id: int,
+    db: Session = Depends(get_db),
+):
+    sale = get_sale_or_404(sale_id, db)
+    sale_repository.delete_sale(db, sale)
+
+    return {
+        "message": "Sale deleted",
+    }
 
 
 @app.exception_handler(HTTPException)
-def http_error_handler(request: Request, exc: HTTPException):
+def http_error_handler(
+    request: Request,
+    exc: HTTPException,
+):
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -105,7 +179,10 @@ def http_error_handler(request: Request, exc: HTTPException):
 
 
 @app.exception_handler(RequestValidationError)
-def validation_error_handler(request: Request, exc: RequestValidationError):
+def validation_error_handler(
+    request: Request,
+    exc: RequestValidationError,
+):
     return JSONResponse(
         status_code=422,
         content={
@@ -117,7 +194,10 @@ def validation_error_handler(request: Request, exc: RequestValidationError):
 
 
 @app.exception_handler(Exception)
-def general_error_handler(request: Request, exc: Exception):
+def general_error_handler(
+    request: Request,
+    exc: Exception,
+):
     return JSONResponse(
         status_code=500,
         content={
