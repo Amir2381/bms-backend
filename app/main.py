@@ -216,3 +216,39 @@ async def log_request(request: Request, call_next):
     print(f"Response status: {response.status_code}")
 
     return response
+
+
+@app.get("/test-sale/{sale_id}")
+def test_sale(
+    sale_id: int,
+    db: Session = Depends(get_db),
+):
+    sale = get_sale_or_404(sale_id, db)
+
+    return {
+        "sale id": sale.id,
+        "user": sale.user.full_name,
+        "product": sale.product.name,
+        "quantity": sale.quantity,
+    }
+
+
+@app.get("/test-user/{user_id}")
+def test_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+):
+    user = get_user_or_404(user_id, db)
+
+    return {
+        "user": user.full_name,
+        "sales_count": len(user.sales),
+        "sale": [
+            {
+                "sale_id": sale.id,
+                "product": sale.product.name,
+                "quantity": sale.quantity,
+            }
+            for sale in user.sales
+        ],
+    }
