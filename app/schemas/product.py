@@ -11,6 +11,5 @@ class ProductCreate(ProductBase):
     pass
 
 
-class ProductResponse(BaseModel):
-    name: str
-    price: float = Field(gt=0)
+class ProductResponse(ProductBase):
+    id: int

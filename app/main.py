@@ -15,10 +15,13 @@ from app.repositories import (
     sale_repository,
     user_repository,
 )
+from app.core.security import hash_password
 from app.models.product import Product
 from app.models.sales import Sale
-from app.schemas.product import ProductCreate
+from app.models.user import User
+from app.schemas.product import ProductCreate, ProductResponse
 from app.schemas.sale import SaleCreate, SaleResponse
+from app.schemas.user import UserCreate, UserResponse
 
 app = FastAPI()
 
@@ -59,7 +62,7 @@ def get_sale_or_404(sale_id: int, db: Session):
     return sale
 
 
-@app.post("/products")
+@app.post("/products", response_model=ProductResponse)
 def create_product(
     product: ProductCreate,
     db: Session = Depends(get_db),
@@ -73,12 +76,12 @@ def create_product(
     return product_repository.create_product(db, new_product)
 
 
-@app.get("/products")
+@app.get("/products", response_model=list[ProductResponse])
 def get_products(db: Session = Depends(get_db)):
     return product_repository.get_all_products(db)
 
 
-@app.get("/products/{product_id}")
+@app.get("/products/{product_id}", response_model=ProductResponse)
 def get_product(
     product_id: int,
     db: Session = Depends(get_db),
@@ -86,7 +89,7 @@ def get_product(
     return get_product_or_404(product_id, db)
 
 
-@app.put("/products/{product_id}")
+@app.put("/products/{product_id}", response_model=ProductResponse)
 def update_product(
     product_id: int,
     product: ProductCreate,
@@ -113,7 +116,7 @@ def delete_product(
 
 
 @app.post("/sales", response_model=SaleResponse)
-def create_sael(
+def create_sale(
     sale: SaleCreate,
     db: Session = Depends(get_db),
 ):
@@ -162,6 +165,20 @@ def delete_sale(
     return {
         "message": "Sale deleted",
     }
+
+
+@app.post("/users", response_model=UserResponse)
+def create_user(
+    user: UserCreate,
+    db: Session = Depends(get_db),
+):
+    new_user = User(
+        full_name=user.full_name,
+        email=user.email,
+        hashed_password=hash_password(user.password),
+    )
+
+    return user_repository.create_user(db, new_user)
 
 
 @app.exception_handler(HTTPException)
@@ -216,39 +233,3 @@ async def log_request(request: Request, call_next):
     print(f"Response status: {response.status_code}")
 
     return response
-
-
-@app.get("/test-sale/{sale_id}")
-def test_sale(
-    sale_id: int,
-    db: Session = Depends(get_db),
-):
-    sale = get_sale_or_404(sale_id, db)
-
-    return {
-        "sale id": sale.id,
-        "user": sale.user.full_name,
-        "product": sale.product.name,
-        "quantity": sale.quantity,
-    }
-
-
-@app.get("/test-user/{user_id}")
-def test_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-):
-    user = get_user_or_404(user_id, db)
-
-    return {
-        "user": user.full_name,
-        "sales_count": len(user.sales),
-        "sale": [
-            {
-                "sale_id": sale.id,
-                "product": sale.product.name,
-                "quantity": sale.quantity,
-            }
-            for sale in user.sales
-        ],
-    }

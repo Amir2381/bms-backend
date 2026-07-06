@@ -2,12 +2,12 @@ from pydantic import BaseModel, Field, EmailStr
 
 
 class UserBase(BaseModel):
-    username: str
+    full_name: str
     email: EmailStr
 
 
 class UserLogin(BaseModel):
-    username: str
+    email: str
     password: str = Field(min_length=3)
 
 
@@ -16,4 +16,4 @@ class UserCreate(UserBase):
 
 
 class UserResponse(UserBase):
-    pass
+    id: int
