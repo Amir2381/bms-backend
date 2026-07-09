@@ -26,6 +26,13 @@ def get_all_users(db: Session) -> list[User]:
     return users
 
 
+def get_user_by_email(db: Session, email: str) -> User | None:
+    stmt = select(User).where(User.email == email)
+    user = db.scalars(stmt).first()
+
+    return user
+
+
 def update_user(db: Session, user: User) -> User:
     db.commit()
     db.refresh(user)

@@ -6,6 +6,7 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime
 from sqlalchemy.orm import Session
 
@@ -15,13 +16,18 @@ from app.repositories import (
     sale_repository,
     user_repository,
 )
-from app.core.security import hash_password
+from app.core.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    get_current_user,
+)
 from app.models.product import Product
 from app.models.sales import Sale
 from app.models.user import User
 from app.schemas.product import ProductCreate, ProductResponse
 from app.schemas.sale import SaleCreate, SaleResponse
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import UserCreate, UserResponse, UserLogin
 
 app = FastAPI()
 
@@ -60,6 +66,36 @@ def get_sale_or_404(sale_id: int, db: Session):
         )
 
     return sale
+
+
+@app.post("/login")
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    db_user = user_repository.get_user_by_email(db, form_data.username)
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password",
+        )
+
+    if not verify_password(form_data.password, db_user.hashed_password):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password",
+        )
+
+    access_token = create_access_token(
+        {
+            "sub": db_user.email,
+        }
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
 
 
 @app.post("/products", response_model=ProductResponse)
@@ -172,6 +208,14 @@ def create_user(
     user: UserCreate,
     db: Session = Depends(get_db),
 ):
+
+    existing_user = user_repository.get_user_by_email(db, user.email)
+    if existing_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Email already exists",
+        )
+
     new_user = User(
         full_name=user.full_name,
         email=user.email,
@@ -179,6 +223,19 @@ def create_user(
     )
 
     return user_repository.create_user(db, new_user)
+
+
+@app.get("/users", response_model=list[UserResponse])
+def get_users(db: Session = Depends(get_db)):
+    return user_repository.get_all_users(db)
+
+
+@app.get("/users/{user_id}", response_model=UserResponse)
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+):
+    return get_user_or_404(user_id, db)
 
 
 @app.exception_handler(HTTPException)
@@ -233,3 +290,10 @@ async def log_request(request: Request, call_next):
     print(f"Response status: {response.status_code}")
 
     return response
+
+
+@app.get("/me")
+def get_me(
+    current_user: User = Depends(get_current_user),
+):
+    return current_user

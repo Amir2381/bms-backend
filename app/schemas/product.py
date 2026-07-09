@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ProductBase(BaseModel):
@@ -13,3 +13,5 @@ class ProductCreate(ProductBase):
 
 class ProductResponse(ProductBase):
     id: int
+
+    model_config = ConfigDict(from_attributes=True)
