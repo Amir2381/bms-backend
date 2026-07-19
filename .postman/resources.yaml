@@ -1,0 +1,7 @@
+# Use this workspace to collaborate
+workspace:
+  id: b122317c-eea5-4761-81b1-c73462f8a560
+
+localResources:
+  collections:
+    - ../FastAPI_Practice.postman_collection.json
