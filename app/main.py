@@ -1,33 +1,33 @@
 from fastapi import (
-    FastAPI,
-    Request,
-    HTTPException,
     Depends,
+    FastAPI,
+    HTTPException,
+    Request,
 )
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from datetime import datetime
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import log_request
+from app.core.security import (
+    create_access_token,
+    get_current_user,
+    hash_password,
+    verify_password,
+)
 from app.db.database import get_db
+from app.models.product import Product
+from app.models.sales import Sale
+from app.models.user import User
 from app.repositories import (
     product_repository,
     sale_repository,
     user_repository,
 )
-from app.core.security import (
-    hash_password,
-    verify_password,
-    create_access_token,
-    get_current_user,
-)
-from app.models.product import Product
-from app.models.sales import Sale
-from app.models.user import User
 from app.schemas.product import ProductCreate, ProductResponse
 from app.schemas.sale import SaleCreate, SaleResponse
-from app.schemas.user import UserCreate, UserResponse, UserLogin
+from app.schemas.user import UserCreate, UserResponse
 
 app = FastAPI()
 
@@ -102,6 +102,8 @@ def login(
 def create_product(
     product: ProductCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(log_request),
 ):
     new_product = Product(
         name=product.name,
@@ -130,6 +132,8 @@ def update_product(
     product_id: int,
     product: ProductCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(log_request),
 ):
     db_product = get_product_or_404(product_id, db)
     db_product.name = product.name
@@ -143,6 +147,8 @@ def update_product(
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(log_request),
 ):
     product = get_product_or_404(product_id, db)
 
@@ -155,6 +161,8 @@ def delete_product(
 def create_sale(
     sale: SaleCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(log_request),
 ):
     get_user_or_404(sale.user_id, db)
     product = get_product_or_404(sale.product_id, db)
@@ -178,7 +186,11 @@ def create_sale(
 
 
 @app.get("/sales", response_model=list[SaleResponse])
-def get_all_sales(db: Session = Depends(get_db)):
+def get_all_sales(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(log_request),
+):
     return sale_repository.get_all_sales(db)
 
 
@@ -186,6 +198,8 @@ def get_all_sales(db: Session = Depends(get_db)):
 def get_sale(
     sale_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(log_request),
 ):
     return get_sale_or_404(sale_id, db)
 
@@ -194,6 +208,8 @@ def get_sale(
 def delete_sale(
     sale_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(log_request),
 ):
     sale = get_sale_or_404(sale_id, db)
     sale_repository.delete_sale(db, sale)
@@ -226,7 +242,11 @@ def create_user(
 
 
 @app.get("/users", response_model=list[UserResponse])
-def get_users(db: Session = Depends(get_db)):
+def get_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(log_request),
+):
     return user_repository.get_all_users(db)
 
 
@@ -234,6 +254,8 @@ def get_users(db: Session = Depends(get_db)):
 def get_user(
     user_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(log_request),
 ):
     return get_user_or_404(user_id, db)
 
