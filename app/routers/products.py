@@ -31,8 +31,26 @@ def create_product(
 
 
 @router.get("", response_model=list[ProductResponse])
-def get_products(db: Session = Depends(get_db)):
-    return product_repository.get_all_products(db)
+def get_products(
+    name: str | None = None,
+    min_price: int | None = None,
+    max_price: int | None = None,
+    in_stock: bool | None = None,
+    sort: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+):
+    return product_repository.get_all_products(
+        db=db,
+        name=name,
+        min_price=min_price,
+        max_price=max_price,
+        in_stock=in_stock,
+        sort=sort,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
