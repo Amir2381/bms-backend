@@ -1,6 +1,7 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from typing import TYPE_CHECKING
 
 from app.db.database import Base
 
@@ -15,9 +16,9 @@ class Sale(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
     quantity: Mapped[int] = mapped_column()
-    user: Mapped[list["User"]] = relationship(
+    user: Mapped["User"] = relationship(
         back_populates="sales",
     )
-    product: Mapped[list["Product"]] = relationship(
+    product: Mapped["Product"] = relationship(
         back_populates="sales",
     )
