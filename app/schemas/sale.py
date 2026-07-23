@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.product import ProductResponse
 from app.schemas.user import UserResponse
@@ -7,7 +7,7 @@ from app.schemas.user import UserResponse
 class SaleCreate(BaseModel):
     user_id: int
     product_id: int
-    quantity: int
+    quantity: int = Field(gt=0)
 
 
 class SaleResponse(BaseModel):

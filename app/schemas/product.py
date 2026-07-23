@@ -1,10 +1,10 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProductBase(BaseModel):
-    name: str
+    name: str = Field(min_length=3, max_length=100)
     price: float = Field(gt=0)
-    stock: int
+    stock: int = Field(gt=0)
 
 
 class ProductCreate(ProductBase):
