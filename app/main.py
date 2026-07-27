@@ -10,7 +10,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.dependencies import log_request
 from app.core.security import (
     get_current_user,
 )
@@ -76,7 +75,7 @@ def general_error_handler(
 
 
 @app.middleware("http")
-async def log_request(request: Request, call_next):
+async def log_request_middleware(request: Request, call_next):
     request.state.request_id = str(uuid.uuid4())
 
     print(f"[{request.state.request_id}] Request: {request.method} {request.url}")
@@ -93,3 +92,6 @@ def get_me(
     current_user: User = Depends(get_current_user),
 ):
     return current_user
+
+
+x = 1
