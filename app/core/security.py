@@ -1,12 +1,15 @@
-from passlib.context import CryptContext
-from jose import jwt, JWTError
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
+
+from app.db.database import get_db
 from app.models.user import User
 from app.repositories import user_repository
-from app.db.database import get_db
 
 SECRET_KEY = "my_secret_key"
 ALGORITHM = "HS256"
@@ -69,7 +72,7 @@ def verify_password(
     )
 
 
-def create_access_token(data: dict) -> str:
+def create_access_token(data: dict[str, Any]) -> str:
     to_encode = data.copy()
 
     expire = datetime.now(UTC) + timedelta(
