@@ -6,6 +6,7 @@ from app.core.security import get_current_user, get_db
 from app.models.product import Product
 from app.models.user import User
 from app.repositories import product_repository
+from app.schemas.pagination import PaginatedResponse
 from app.schemas.product import ProductCreate, ProductResponse
 
 router = APIRouter(
@@ -30,18 +31,20 @@ def create_product(
     return product_repository.create_product(db, new_product)
 
 
-@router.get("", response_model=list[ProductResponse])
+@router.get("", response_model=PaginatedResponse[ProductResponse])
 def get_products(
     name: str | None = None,
     min_price: int | None = None,
     max_price: int | None = None,
     in_stock: bool | None = None,
     sort: str | None = None,
-    skip: int = 0,
-    limit: int = 20,
+    page: int = 1,
+    size: int = 20,
     db: Session = Depends(get_db),
 ):
-    return product_repository.get_all_products(
+    skip = (page - 1) * size
+
+    products, total = product_repository.get_all_products(
         db=db,
         name=name,
         min_price=min_price,
@@ -49,7 +52,17 @@ def get_products(
         in_stock=in_stock,
         sort=sort,
         skip=skip,
-        limit=limit,
+        limit=size,
+    )
+
+    pages = (total + size - 1) // size
+
+    return PaginatedResponse(
+        items=products,
+        total=total,
+        page=page,
+        size=size,
+        pages=pages,
     )
 
 

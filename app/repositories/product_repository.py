@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.product import Product
@@ -27,7 +27,7 @@ def get_all_products(
     sort: str | None = None,
     skip: int = 0,
     limit: int = 20,
-) -> list[Product]:
+) -> tuple[list[Product], int]:
     stmt = select(Product)
 
     if name is not None:
@@ -57,11 +57,14 @@ def get_all_products(
     elif sort == "-name":
         stmt = stmt.order_by(Product.name.desc())
 
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total = db.scalar(count_stmt)
+
     stmt = stmt.offset(skip)
     stmt = stmt.limit(limit)
 
     Products = db.scalars(stmt).all()
-    return Products
+    return Products, total
 
 
 def update_product(db: Session, product: Product) -> Product:
