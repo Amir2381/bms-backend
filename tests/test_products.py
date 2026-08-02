@@ -5,10 +5,20 @@ def test_get_products(client):
 
     data = response.json()
 
-    assert isinstance(data, list)
+    assert "items" in data
+    assert "total" in data
+    assert "page" in data
+    assert "size" in data
+    assert "pages" in data
 
-    if data:
-        product = data[0]
+    assert isinstance(data["items"], list)
+    assert isinstance(data["total"], int)
+    assert isinstance(data["page"], int)
+    assert isinstance(data["size"], int)
+    assert isinstance(data["pages"], int)
+
+    if data["items"]:
+        product = data["items"][0]
 
         assert "id" in product
         assert "name" in product
@@ -75,3 +85,16 @@ def test_delete_product(client):
 
     assert response.status_code == 200
     assert response.json() == {"message": "deleted"}
+
+
+def test_get_products_pagination(client):
+    response = client.get("/products?page=1&size=2")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["page"] == 1
+    assert data["size"] == 2
+    assert isinstance(data["items"], list)
+    assert len(data["items"]) <= 2

@@ -2,7 +2,19 @@ def test_get_sales(client):
     response = client.get("/sales")
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+
+    data = response.json()
+
+    assert isinstance(data, list)
+
+    if data:
+        sale = data[0]
+
+        assert "user" in sale
+        assert "product" in sale
+
+        assert isinstance(sale["user"], dict)
+        assert isinstance(sale["product"], dict)
 
 
 # def test_create_sale(client):
