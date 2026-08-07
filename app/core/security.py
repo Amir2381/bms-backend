@@ -7,13 +7,10 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.database import get_db
 from app.models.user import User
 from app.repositories import user_repository
-
-SECRET_KEY = "my_secret_key"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
@@ -35,8 +32,8 @@ def get_current_user(
     try:
         payload = jwt.decode(
             token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM],
+            settings.secret_key,
+            algorithms=[settings.algorithm],
         )
 
         email = payload.get("sub")
@@ -76,7 +73,7 @@ def create_access_token(data: dict[str, Any]) -> str:
     to_encode = data.copy()
 
     expire = datetime.now(UTC) + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES,
+        minutes=settings.access_token_expire_minutes,
     )
 
     to_encode.update(
@@ -87,8 +84,8 @@ def create_access_token(data: dict[str, Any]) -> str:
 
     encoded_jwt = jwt.encode(
         to_encode,
-        SECRET_KEY,
-        algorithm=ALGORITHM,
+        settings.secret_key,
+        algorithm=settings.algorithm,
     )
 
     return encoded_jwt
