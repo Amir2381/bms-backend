@@ -6,6 +6,9 @@ from sqlalchemy.engine import create_engine
 
 from app.core.config import settings
 from app.db.database import Base
+from app.models.product import Product
+from app.models.sales import Sale
+from app.models.user import User
 
 config = context.config
 
