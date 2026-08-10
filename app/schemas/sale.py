@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.product import ProductResponse
@@ -15,5 +17,8 @@ class SaleResponse(BaseModel):
     product: ProductResponse
     user: UserResponse
     quantity: int
+    unit_price: float
+    sale_date: datetime
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey
@@ -12,10 +13,15 @@ if TYPE_CHECKING:
 
 class Sale(Base):
     __tablename__ = "sales"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
     quantity: Mapped[int] = mapped_column()
+    unit_price: Mapped[float] = mapped_column()
+    sale_date: Mapped[datetime] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column()
+
     user: Mapped["User"] = relationship(
         back_populates="sales",
     )

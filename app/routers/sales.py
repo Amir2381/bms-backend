@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -42,6 +44,9 @@ def create_sale(
         user_id=sale.user_id,
         product_id=sale.product_id,
         quantity=sale.quantity,
+        unit_price=product.price,
+        sale_date=datetime.now(UTC),
+        created_at=datetime.now(UTC),
     )
 
     return sale_repository.create_sale(db, new_sale)
