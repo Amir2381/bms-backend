@@ -7,9 +7,9 @@ from app.core.dependencies import (
     get_product_or_404,
     get_sale_or_404,
     get_user_or_404,
-    log_request,
 )
-from app.core.security import get_current_user, get_db
+from app.core.security import get_current_user
+from app.db.database import get_db
 from app.models.sales import Sale
 from app.models.user import User
 from app.repositories import product_repository, sale_repository
@@ -26,7 +26,6 @@ def create_sale(
     sale: SaleCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(log_request),
 ):
     get_user_or_404(sale.user_id, db)
     product = get_product_or_404(sale.product_id, db)
@@ -56,7 +55,6 @@ def create_sale(
 def get_all_sales(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(log_request),
 ):
     return sale_repository.get_all_sales(db)
 
@@ -66,7 +64,6 @@ def get_sale(
     sale_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(log_request),
 ):
     return get_sale_or_404(sale_id, db)
 
@@ -76,7 +73,6 @@ def delete_sale(
     sale_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(log_request),
 ):
     sale = get_sale_or_404(sale_id, db)
     sale_repository.delete_sale(db, sale)

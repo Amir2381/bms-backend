@@ -8,10 +8,6 @@ from app.repositories import (
 )
 
 
-def log_request(request: Request):
-    print(f"{request.method} {request.url.path}")
-
-
 def get_product_or_404(product_id: int, db: Session):
     product = product_repository.get_product(db, product_id)
 

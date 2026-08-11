@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_user_or_404, log_request
+from app.core.dependencies import get_user_or_404
 from app.core.security import (
     get_current_user,
-    get_db,
     hash_password,
 )
 from app.models.user import User
+from app.db.database import get_db
 from app.repositories import user_repository
 from app.schemas.user import UserCreate, UserResponse
 
@@ -43,7 +43,6 @@ def create_user(
 def get_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(log_request),
 ):
     return user_repository.get_all_users(db)
 
@@ -53,6 +52,5 @@ def get_user(
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(log_request),
 ):
     return get_user_or_404(user_id, db)

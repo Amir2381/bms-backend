@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_product_or_404, log_request
-from app.core.security import get_current_user, get_db
+from app.core.dependencies import get_product_or_404
+from app.core.security import get_current_user
+from app.db.database import get_db
 from app.models.product import Product
 from app.models.user import User
 from app.repositories import product_repository
@@ -20,7 +21,6 @@ def create_product(
     product: ProductCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(log_request),
 ):
     new_product = Product(
         name=product.name,
@@ -80,7 +80,6 @@ def update_product(
     product: ProductCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(log_request),
 ):
     db_product = get_product_or_404(product_id, db)
     db_product.name = product.name
@@ -95,7 +94,6 @@ def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: None = Depends(log_request),
 ):
     product = get_product_or_404(product_id, db)
 
