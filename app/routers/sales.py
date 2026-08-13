@@ -10,7 +10,7 @@ from app.core.dependencies import (
 )
 from app.core.security import get_current_user
 from app.db.database import get_db
-from app.models.sales import Sale
+from app.models.sales import Sale, SaleItem
 from app.models.user import User
 from app.repositories import product_repository, sale_repository
 from app.schemas.sale import SaleCreate, SaleResponse
@@ -28,24 +28,34 @@ def create_sale(
     current_user: User = Depends(get_current_user),
 ):
     get_user_or_404(sale.user_id, db)
-    product = get_product_or_404(sale.product_id, db)
 
-    if product.stock < sale.quantity:
-        raise HTTPException(
-            status_code=400,
-            detail="Not enough stock",
+    sale_items = []
+
+    for item in sale.items:
+        product = get_product_or_404(item.product_id, db)
+
+        if product.stock < item.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Not enough stock for product {product.id}",
+            )
+
+        product.stock -= item.quantity
+        product_repository.update_product(db, product)
+
+        sale_items.append(
+            SaleItem(
+                product_id=product.id,
+                quantity=item.quantity,
+                unit_price=product.price,
+            )
         )
-
-    product.stock -= sale.quantity
-    product_repository.update_product(db, product)
 
     new_sale = Sale(
         user_id=sale.user_id,
-        product_id=sale.product_id,
-        quantity=sale.quantity,
-        unit_price=product.price,
         sale_date=datetime.now(UTC),
         created_at=datetime.now(UTC),
+        items=sale_items,
     )
 
     return sale_repository.create_sale(db, new_sale)

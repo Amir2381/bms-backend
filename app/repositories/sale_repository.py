@@ -1,7 +1,7 @@
 from sqlalchemy import Select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.sales import Sale
+from app.models.sales import Sale, SaleItem
 
 
 def create_sale(db: Session, sale: Sale) -> Sale:
@@ -17,7 +17,7 @@ def get_sale(db: Session, sale_id: int) -> Sale | None:
         Select(Sale)
         .options(
             joinedload(Sale.user),
-            joinedload(Sale.product),
+            joinedload(Sale.items).joinedload(SaleItem.product),
         )
         .where(Sale.id == sale_id)
     )
@@ -28,10 +28,10 @@ def get_sale(db: Session, sale_id: int) -> Sale | None:
 
 def get_all_sales(db: Session) -> list[Sale]:
     stmt = Select(Sale).options(
-        joinedload(Sale.product),
         joinedload(Sale.user),
+        joinedload(Sale.items).joinedload(SaleItem.product),
     )
-    sales = db.scalars(stmt).all()
+    sales = db.scalars(stmt).unique().all()
 
     return sales
 
