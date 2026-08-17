@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Numeric
@@ -16,8 +16,12 @@ class Sale(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    sale_date: Mapped[datetime] = mapped_column()
-    created_at: Mapped[datetime] = mapped_column()
+    sale_date: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc)
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc)
+    )
 
     user: Mapped["User"] = relationship(
         back_populates="sales",
