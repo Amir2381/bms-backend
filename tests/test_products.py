@@ -98,3 +98,39 @@ def test_get_products_pagination(client):
     assert data["size"] == 2
     assert isinstance(data["items"], list)
     assert len(data["items"]) <= 2
+
+
+def test_get_product(client):
+    response = client.get("/products/1")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["id"] == 1
+    assert data["name"] == "Test Product"
+    assert data["stock"] == 10
+
+
+def test_get_product_not_found(client):
+    response = client.get("/products/999")
+
+    assert response.status_code == 404
+
+
+def test_update_product_not_found(client):
+    product_data = {
+        "name": "Updated Product",
+        "price": 2000,
+        "stock": 10,
+    }
+
+    response = client.put("/products/999", json=product_data)
+
+    assert response.status_code == 404
+
+
+def test_delete_product_not_found(client):
+    response = client.delete("/products/999")
+
+    assert response.status_code == 404

@@ -88,3 +88,43 @@ def test_delete_sale(client):
     assert response.json() == {
         "message": "Sale deleted",
     }
+
+
+def test_get_sale(client):
+    sale_data = {
+        "user_id": 1,
+        "items": [
+            {
+                "product_id": 1,
+                "quantity": 2,
+            }
+        ],
+    }
+
+    create_response = client.post("/sales", json=sale_data)
+
+    assert create_response.status_code == 200
+
+    sale_id = create_response.json()["id"]
+
+    response = client.get(f"/sales/{sale_id}")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["id"] == sale_id
+    assert data["user"]["id"] == 1
+    assert len(data["items"]) == 1
+
+
+def test_get_sale_not_found(client):
+    response = client.get("/sales/999")
+
+    assert response.status_code == 404
+
+
+def test_delete_sale_not_found(client):
+    response = client.delete("/sales/999")
+
+    assert response.status_code == 404

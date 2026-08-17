@@ -31,14 +31,12 @@ def setup_database():
     db: Session = TestingSessionLocal()
 
     test_user = User(
-        id=1,
         full_name="Test User",
         email="test@example.com",
         hashed_password="hashed_password",
     )
 
     test_product = Product(
-        id=1,
         name="Test Product",
         price=100.00,
         stock=10,

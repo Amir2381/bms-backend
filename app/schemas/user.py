@@ -15,6 +15,11 @@ class UserCreate(UserBase):
     password: str = Field(min_length=3)
 
 
+class UserUpdate(BaseModel):
+    full_name: str = Field(min_length=3, max_length=100)
+    email: EmailStr
+
+
 class UserResponse(UserBase):
     id: int
 
