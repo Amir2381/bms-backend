@@ -1,19 +1,20 @@
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import (
-    get_product_or_404,
     get_sale_or_404,
-    get_user_or_404,
 )
+from app.services import sale_service
 from app.core.security import get_current_user
 from app.db.database import get_db
-from app.models.sales import Sale, SaleItem
 from app.models.user import User
-from app.repositories import product_repository, sale_repository
+from app.repositories import sale_repository
 from app.schemas.sale import SaleCreate, SaleResponse
+from app.services.exceptions import (
+    InsufficientStockError,
+    ProductNotFoundError,
+    UserNotFoundError,
+)
 
 router = APIRouter(
     prefix="/sales",
@@ -27,38 +28,14 @@ def create_sale(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    get_user_or_404(sale.user_id, db)
-
-    sale_items = []
-
-    for item in sale.items:
-        product = get_product_or_404(item.product_id, db)
-
-        if product.stock < item.quantity:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Not enough stock for product {product.id}",
-            )
-
-        product.stock -= item.quantity
-        product_repository.update_product(db, product)
-
-        sale_items.append(
-            SaleItem(
-                product_id=product.id,
-                quantity=item.quantity,
-                unit_price=product.price,
-            )
-        )
-
-    new_sale = Sale(
-        user_id=sale.user_id,
-        sale_date=datetime.now(UTC),
-        created_at=datetime.now(UTC),
-        items=sale_items,
-    )
-
-    return sale_repository.create_sale(db, new_sale)
+    try:
+        return sale_service.create_sale(db, sale)
+    except UserNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ProductNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InsufficientStockError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[SaleResponse])

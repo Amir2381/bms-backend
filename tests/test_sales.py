@@ -48,6 +48,62 @@ def test_create_sale(client):
     assert data["items"][0]["quantity"] == 2
 
 
+def test_create_sale_user_not_found(client):
+    sale_data = {
+        "user_id": 999999,
+        "items": [
+            {
+                "product_id": 1,
+                "quantity": 1,
+            }
+        ],
+    }
+
+    response = client.post("/sales", json=sale_data)
+
+    assert response.status_code == 404
+    assert response.json()["success"] is False
+    assert response.json()["error"] == "User 999999 not found"
+
+
+def test_create_sale_product_not_found(client):
+    sale_data = {
+        "user_id": 1,
+        "items": [
+            {
+                "product_id": 999999,
+                "quantity": 1,
+            }
+        ],
+    }
+
+    response = client.post("/sales", json=sale_data)
+
+    assert response.status_code == 404
+    assert response.json()["success"] is False
+    assert response.json()["error"] == "Product 999999 not found"
+
+
+def test_create_sale_insufficient_stock(client):
+    sale_data = {
+        "user_id": 1,
+        "items": [
+            {
+                "product_id": 1,
+                "quantity": 11,
+            }
+        ],
+    }
+
+    response = client.post("/sales", json=sale_data)
+
+    assert response.status_code == 400
+    assert response.json()["success"] is False
+    assert response.json()["error"] == (
+        "Not enough stock for product 1: " "requested 11, " "available 10"
+    )
+
+
 def test_create_sale_invalid_quantity(client):
     sale_data = {
         "user_id": 1,
