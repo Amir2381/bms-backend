@@ -38,13 +38,14 @@ The project uses PostgreSQL for persistent data storage, SQLAlchemy as the ORM, 
 
 ```text
 app/
-├── core/          # Configuration, security, dependencies, logging
-├── db/            # Database engine and session management
-├── models/        # SQLAlchemy ORM models
-├── repositories/  # Database access layer
-├── routers/       # API endpoints
-├── schemas/       # Pydantic request/response schemas
-└── main.py        # FastAPI application entry point
+├── core/           # Configuration, security, dependencies, logging
+├── db/             # Database engine, sessions, and schema reference
+├── models/         # SQLAlchemy ORM domain/data models
+├── repositories/   # Database access layer
+├── routers/        # HTTP API endpoints
+├── schemas/        # Pydantic request/response schemas
+├── services/       # Business logic and domain exceptions
+└── main.py         # FastAPI application entry point
 ```
 
 ## Installation
@@ -112,6 +113,43 @@ View migration history:
 ```bash
 alembic history
 ```
+
+## Architecture
+
+The application separates HTTP handling, business logic, and database access into distinct layers.
+
+The main application flow is:
+
+Router → Service → Repository → Database
+
+### Router
+
+Routers handle HTTP concerns such as request parsing, authentication dependencies, response models, and translating domain exceptions into HTTP responses.
+
+### Service
+
+Services contain business rules and application logic.
+
+For sales, `SaleService` is responsible for validating the user and products, checking stock availability, reducing stock, capturing the historical unit price, and creating the sale.
+
+### Repository
+
+Repositories encapsulate database access and persistence operations.
+
+### Sales Domain Model
+
+A sale is represented by a `Sale` entity and one or more `SaleItem` entities.
+
+```text
+User
+ │
+ └──< Sale
+        │
+        └──< SaleItem >── Product
+
+SaleItem.unit_price stores the product price at the time of the sale so that historical sales remain accurate even when the product's current price changes.
+
+Architectural decisions are documented in docs/adr/.
 
 ## Running the Application
 
