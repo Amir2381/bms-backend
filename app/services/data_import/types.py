@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TypedDict
 
@@ -16,3 +17,9 @@ class CleanImportRow(TypedDict, total=False):
     quantity: int
     unit_price: float
     seller: str
+
+
+@dataclass
+class ParsedImportData:
+    headers: list[str]
+    rows: list[RawImportRow]

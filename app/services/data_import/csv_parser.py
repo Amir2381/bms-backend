@@ -1,10 +1,10 @@
 import csv
 
-from app.services.data_import.types import RawImportRow
+from app.services.data_import.types import ParsedImportData, RawImportRow
 
 
 class CsvFileParser:
-    def parse(self, file_path: str) -> list[RawImportRow]:
+    def parse(self, file_path: str) -> ParsedImportData:
         with open(
             file_path,
             mode="r",
@@ -13,7 +13,14 @@ class CsvFileParser:
         ) as file:
             reader = csv.DictReader(file)
 
-            return [
+            headers = reader.fieldnames or []
+
+            rows: list[RawImportRow] = [
                 {key: value or "" for key, value in row.items() if key is not None}
                 for row in reader
             ]
+
+            return ParsedImportData(
+                headers=headers,
+                rows=rows,
+            )

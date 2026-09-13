@@ -12,3 +12,15 @@ class FileTooLargeError(ImportError):
 
 class EmptyFileError(ImportError):
     """Raised when the uploaded file is empty."""
+
+
+class InvalidImportRowError(ImportError):
+    """Raised when an imported row contains invalid data."""
+
+
+class MissingRequiredColumnError(ImportError):
+    """Raised when a required column is missing."""
+
+
+class InvalidImportValueError(ImportError):
+    """Raised when an imported value cannot be converted."""

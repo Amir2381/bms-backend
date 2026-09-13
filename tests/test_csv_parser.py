@@ -15,7 +15,15 @@ def test_parse_csv_file(tmp_path):
 
     result = parser.parse(str(csv_file))
 
-    assert result == [
+    assert result.headers == [
+        "date",
+        "product",
+        "quantity",
+        "unit_price",
+        "seller",
+    ]
+
+    assert result.rows == [
         {
             "date": "2026-09-10",
             "product": "Laptop",
