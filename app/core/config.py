@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     sql_echo: bool = False
 
+    import_max_file_size: int = 10 * 1024 * 1024
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from app.core.logging import setup_logging
 from app.core.security import get_current_user
 from app.models.user import User
-from app.routers import auth, products, sales, users
+from app.routers import auth, data_import, products, sales, users
 
 setup_logging()
 
@@ -26,6 +26,7 @@ app.include_router(auth.router)
 app.include_router(products.router)
 app.include_router(sales.router)
 app.include_router(users.router)
+app.include_router(data_import.router)
 
 app.add_middleware(
     CORSMiddleware,
