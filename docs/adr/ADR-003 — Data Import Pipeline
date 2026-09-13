@@ -1,0 +1,144 @@
+# ADR-003: Data Import Pipeline
+
+## Status
+
+Accepted
+
+## Context
+
+The application needs to import sales data from external CSV and Excel files.
+
+External files are untrusted and structurally different from the application's internal domain model. They may contain inconsistent column names, formatting differences, invalid values, missing fields, and data that requires normalization before it can be used by the sales domain.
+
+The existing application separates HTTP handling, business logic, and persistence using the following flow:
+
+Router → Service → Repository → Database
+
+Sales business rules are already implemented in `SaleService`, including user validation, product validation, stock validation, stock reduction, historical unit-price capture, and sale persistence.
+
+The import functionality must therefore integrate with the existing domain instead of duplicating sales business rules.
+
+## Decision
+
+Data Import will be implemented as a separate application-level pipeline responsible for converting external file data into valid domain input.
+
+The initial pipeline is:
+
+Parser → Cleaner → Import Validation → Mapper → SaleService → Repository → Database
+
+### Parser
+
+Responsible for reading supported file formats and converting them into a common intermediate representation.
+
+Supported formats:
+
+* CSV
+* XLSX
+
+The parser must not contain sales business rules.
+
+### Cleaner
+
+Responsible for basic data normalization, including:
+
+* Column-name normalization
+* Whitespace normalization
+* Date parsing
+* Numeric parsing
+* Basic invalid-record detection
+* Simple duplicate detection
+
+### Import Validation
+
+Responsible for validation specific to the import contract, such as:
+
+* Required columns
+* Required values
+* Supported data types
+* Valid quantity
+* Valid historical unit price
+* Valid date format
+
+Domain rules must not be duplicated here.
+
+### Mapper
+
+Responsible for converting cleaned import records into domain-level input and resolving external identifiers such as product and user information where required.
+
+### SaleService
+
+The existing SaleService remains responsible for sales business rules.
+
+Import must not duplicate:
+
+* User existence validation
+* Product existence validation
+* Stock validation
+* Stock reduction rules
+* Sale persistence rules
+
+## Input Contract
+
+The initial sales import contract contains:
+
+### Required Columns
+
+* `date`
+* `product`
+* `quantity`
+* `unit_price`
+
+### Optional Columns
+
+* `seller`
+
+Column names are normalized before mapping and support predefined aliases.
+
+## Separation of Responsibilities
+
+The import module is responsible for handling external data concerns.
+
+The sales service remains responsible for domain concerns.
+
+This prevents file-format handling, data cleaning, and import-specific validation from being coupled to the sales domain.
+
+## Consequences
+
+### Positive
+
+* Import logic remains separate from sales business logic.
+* CSV and Excel parsing can evolve independently.
+* Additional file formats can be added later.
+* Data cleaning can be tested independently.
+* Existing sales business rules remain centralized.
+* The import pipeline can later support richer mapping and validation without modifying the HTTP layer.
+
+### Negative
+
+* Import introduces additional application-layer components.
+* Some data must be transformed between external and internal representations.
+* Batch import requires additional error reporting and transaction handling.
+
+## Important Domain Constraint
+
+The current SaleService derives `SaleItem.unit_price` from the product's current price.
+
+This is correct for normal new sales, but historical imports require preservation of the price contained in the source file.
+
+The exact integration strategy for historical `unit_price` and the decision about whether imported historical sales should affect current product stock will be resolved during the integration stage of the Data Import implementation.
+
+This ADR intentionally does not change the existing Sale domain or SaleService behavior before that decision is made.
+
+## Alternatives Considered
+
+### Direct Import into Repository
+
+Rejected because it would bypass existing sales business rules and couple external file processing directly to persistence.
+
+### Put Import Logic inside SaleService
+
+Rejected because file parsing and data cleaning are not sales-domain responsibilities and would make the service harder to maintain and test.
+
+### Separate Import Application Module
+
+Selected because it preserves the existing service-layer architecture while creating a clear boundary around external data processing.
