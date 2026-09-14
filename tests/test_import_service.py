@@ -1,10 +1,31 @@
 from datetime import datetime
 
+from app.models.sales import Sale, SaleItem
+from app.models.user import User
+from app.repositories import product_repository
+from tests.database import TestingSessionLocal
+from app.models.sales import Sale, SaleItem
+from app.models.user import User
+from app.repositories import product_repository
+from tests.database import TestingSessionLocal
 from app.services.data_import.cleaner import BasicDataCleaner
 from app.services.data_import.csv_parser import CsvFileParser
+from app.services.data_import.domain_mapper import BasicDomainMapper
+from app.services.data_import.import_sale_service import ImportSaleService
 from app.services.data_import.mapper import BasicColumnMapper
 from app.services.data_import.service import ImportService
 from app.services.data_import.validator import BasicImportValidator
+from app.services.data_import.types import ImportedSaleInput
+
+
+class FakeImportSaleService(ImportSaleService):
+    def create_sales(
+        self,
+        db,
+        sale_inputs,
+        current_user,
+    ):
+        return sale_inputs
 
 
 def create_import_service() -> ImportService:
@@ -13,6 +34,8 @@ def create_import_service() -> ImportService:
         validator=BasicImportValidator(),
         mapper=BasicColumnMapper(),
         cleaner=BasicDataCleaner(),
+        domain_mapper=BasicDomainMapper(),
+        sale_service=FakeImportSaleService(),
     )
 
 
@@ -28,23 +51,27 @@ def test_import_service_processes_csv_with_aliases(tmp_path):
 
     service = create_import_service()
 
-    result = service.process(str(csv_file))
+    result = service.process(
+        file_path=str(csv_file),
+        db=None,
+        current_user=None,
+    )
 
     assert result.rows == [
-        {
-            "date": datetime(2026, 9, 10),
-            "product": "Laptop",
-            "quantity": 2,
-            "unit_price": 1200.0,
-            "seller": "Amir",
-        },
-        {
-            "date": datetime(2026, 9, 11),
-            "product": "Mouse",
-            "quantity": 5,
-            "unit_price": 25.0,
-            "seller": "Reza",
-        },
+        ImportedSaleInput(
+            sale_date=datetime(2026, 9, 10),
+            product="Laptop",
+            quantity=2,
+            unit_price=1200.0,
+            seller="Amir",
+        ),
+        ImportedSaleInput(
+            sale_date=datetime(2026, 9, 11),
+            product="Mouse",
+            quantity=5,
+            unit_price=25.0,
+            seller="Reza",
+        ),
     ]
 
     assert result.report.total_rows == 2
@@ -66,7 +93,11 @@ def test_import_service_reports_invalid_rows(tmp_path):
 
     service = create_import_service()
 
-    result = service.process(str(csv_file))
+    result = service.process(
+        file_path=str(csv_file),
+        db=None,
+        current_user=None,
+    )
 
     assert len(result.rows) == 1
     assert result.report.total_rows == 2
@@ -74,3 +105,105 @@ def test_import_service_reports_invalid_rows(tmp_path):
     assert result.report.invalid_rows == 1
     assert result.report.duplicate_rows == 0
     assert len(result.report.errors) == 1
+
+
+def test_import_service_creates_sales_in_database(tmp_path):
+    csv_file = tmp_path / "sales.csv"
+
+    csv_file.write_text(
+        "date,product,quantity,unit_price\n" "2026-09-10,Test Product,2,75.50\n",
+        encoding="utf-8",
+    )
+
+    db = TestingSessionLocal()
+
+    try:
+        current_user = db.query(User).filter_by(email="test@example.com").first()
+
+        product = product_repository.get_product_by_name(
+            db,
+            "Test Product",
+        )
+
+        service = ImportService(
+            parser=CsvFileParser(),
+            validator=BasicImportValidator(),
+            mapper=BasicColumnMapper(),
+            cleaner=BasicDataCleaner(),
+            domain_mapper=BasicDomainMapper(),
+            sale_service=ImportSaleService(),
+        )
+
+        result = service.process(
+            file_path=str(csv_file),
+            db=db,
+            current_user=current_user,
+        )
+
+        sale = db.query(Sale).first()
+        sale_item = db.query(SaleItem).first()
+
+        assert sale is not None
+        assert sale.user_id == current_user.id
+
+        assert sale_item is not None
+        assert sale_item.product_id == product.id
+        assert sale_item.quantity == 2
+        assert float(sale_item.unit_price) == 75.50
+
+        db.refresh(product)
+        assert product.stock == 10
+
+        assert len(result.rows) == 1
+
+    finally:
+        db.close()
+
+
+def test_import_sales_endpoint_creates_sale_in_database(client):
+    csv_content = (
+        "date,product,quantity,unit_price\n" "2026-09-12,Test Product,2,75.50\n"
+    )
+
+    response = client.post(
+        "/import/sales",
+        files={
+            "file": (
+                "sales.csv",
+                csv_content,
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["message"] == "Sales imported successfully."
+    assert data["filename"] == "sales.csv"
+    assert data["imported_rows"] == 1
+
+    db = TestingSessionLocal()
+
+    try:
+        sale = db.query(Sale).first()
+        sale_item = db.query(SaleItem).first()
+
+        assert sale is not None
+        assert sale.user_id == 1
+
+        assert sale_item is not None
+        assert sale_item.quantity == 2
+        assert float(sale_item.unit_price) == 75.50
+
+        product = product_repository.get_product_by_name(
+            db,
+            "Test Product",
+        )
+
+        assert product is not None
+        assert product.stock == 10
+
+    finally:
+        db.close()

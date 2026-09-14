@@ -24,3 +24,11 @@ class MissingRequiredColumnError(ImportError):
 
 class InvalidImportValueError(ImportError):
     """Raised when an imported value cannot be converted."""
+
+
+class ImportedProductNotFoundError(ImportError):
+    """Raised when an imported product cannot be found."""
+
+
+class ImportedSellerNotFoundError(ImportError):
+    """Raised when an imported seller cannot be found."""

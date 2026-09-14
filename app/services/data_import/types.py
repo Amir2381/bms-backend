@@ -23,3 +23,12 @@ class CleanImportRow(TypedDict, total=False):
 class ParsedImportData:
     headers: list[str]
     rows: list[RawImportRow]
+
+
+@dataclass
+class ImportedSaleInput:
+    sale_date: datetime
+    product: str
+    quantity: int
+    unit_price: float
+    seller: str = ""

@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 
+from app.models.sales import Sale
+
 
 @dataclass
 class CleaningReport:
@@ -12,5 +14,5 @@ class CleaningReport:
 
 @dataclass
 class ImportResult:
-    rows: list[dict] = field(default_factory=list)
+    rows: list[Sale] = field(default_factory=list)
     report: CleaningReport = field(default_factory=CleaningReport)

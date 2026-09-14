@@ -77,3 +77,13 @@ def update_product(db: Session, product: Product) -> Product:
 def delete_product(db: Session, product: Product) -> None:
     db.delete(product)
     db.commit()
+
+
+def get_product_by_name(
+    db: Session,
+    name: str,
+) -> Product | None:
+    stmt = select(Product).where(Product.name == name)
+    product = db.scalars(stmt).first()
+
+    return product
