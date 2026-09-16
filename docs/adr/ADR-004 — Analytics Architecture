@@ -1,0 +1,110 @@
+# ADR-004: Analytics Architecture
+
+## Status
+
+Accepted
+
+## Context
+
+The application needs to provide analytical information based on sales data, including dashboard summary metrics, sales trends, and product performance.
+
+The existing application separates transactional sales operations using the following flow:
+
+Router → Service → Repository → Database
+
+Transactional sales operations and analytical queries have different responsibilities.
+
+The `SaleService` is responsible for sales business rules such as user validation, product validation, stock validation, stock reduction, historical unit-price capture, and sale persistence.
+
+Analytics requires read-oriented operations such as aggregation, grouping, ranking, and reporting. Placing this logic inside the existing `SaleService` would mix transactional business rules with analytical concerns.
+
+Placing analytical calculations inside routers would also couple business logic to HTTP concerns.
+
+Analytics must use the historical price stored on `SaleItem.unit_price` when calculating historical revenue. The current `Product.price` must not be used for historical sales calculations because it may change after a sale has occurred.
+
+## Decision
+
+Analytics will be implemented as a separate application-level module under:
+
+`app/services/analytics/`
+
+The initial structure is:
+
+```text
+app/services/analytics/
+├── __init__.py
+├── service.py
+└── types.py
+```
+
+The Analytics module will provide read-oriented operations and contracts for:
+
+* Summary Metrics
+* Sales Trends
+* Product Performance
+
+The initial Analytics flow will be:
+
+Analytics Router → Analytics Service → SQLAlchemy Query → Database
+
+The Analytics Service will be responsible for analytical application logic.
+
+Analytical aggregation will primarily be performed by the database using SQL aggregation through SQLAlchemy rather than loading complete datasets into application memory.
+
+Historical revenue calculations must use:
+
+`SaleItem.quantity × SaleItem.unit_price`
+
+The current `Product.price` must not be used to calculate historical sales revenue.
+
+Analytics will remain separate from the transactional `SaleService`.
+
+A dedicated Analytics Repository will not be introduced initially. Analytics queries will remain within the Analytics module unless future complexity justifies extracting a separate abstraction.
+
+The project will not introduce full CQRS, a separate read database, event sourcing, caching, or other advanced analytics infrastructure at this stage.
+
+## Consequences
+
+### Positive
+
+* Analytics logic is separated from transactional sales logic.
+* Routers remain focused on HTTP concerns.
+* Analytical queries can be tested independently.
+* Database-side aggregation reduces unnecessary data transfer.
+* Historical revenue remains based on the actual price stored for each sale item.
+* The Analytics module can be extended independently as dashboard requirements grow.
+* The design avoids unnecessary architectural complexity for the current MVP.
+
+### Negative
+
+* Analytics introduces an additional application-level module.
+* Analytical queries require careful handling of aggregation and empty datasets.
+* The application now has separate read-oriented and transactional service responsibilities.
+
+## Alternatives Considered
+
+### Put Analytics Logic inside Routers
+
+Rejected because routers should handle HTTP concerns rather than contain analytical business logic.
+
+### Put Analytics Logic inside SaleService
+
+Rejected because SaleService is responsible for transactional sales business rules, while Analytics is a separate read-oriented concern.
+
+### In-memory Aggregation
+
+Rejected as the primary approach because loading complete sales datasets into application memory does not scale well and causes unnecessary data transfer between the database and application.
+
+### Dedicated Analytics Repository
+
+Deferred because the current MVP does not require another abstraction layer. It can be introduced later if the number or complexity of analytical queries justifies it.
+
+### Full CQRS
+
+Rejected for the current scope because the MVP does not require separate read/write models or infrastructure.
+
+## Important Domain Constraint
+
+All historical sales analytics must use `SaleItem.unit_price` as the historical price snapshot.
+
+Analytics must not depend on the current value of `Product.price` when calculating historical revenue.
