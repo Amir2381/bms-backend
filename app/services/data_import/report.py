@@ -13,6 +13,11 @@ class CleaningReport:
 
 
 @dataclass
+class ImportReport(CleaningReport):
+    imported_rows: int = 0
+
+
+@dataclass
 class ImportResult:
     rows: list[Sale] = field(default_factory=list)
-    report: CleaningReport = field(default_factory=CleaningReport)
+    report: ImportReport = field(default_factory=ImportReport)

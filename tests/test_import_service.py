@@ -207,3 +207,118 @@ def test_import_sales_endpoint_creates_sale_in_database(client):
 
     finally:
         db.close()
+
+
+def test_import_sales_returns_404_when_product_not_found(client):
+    csv_content = (
+        "date,product,quantity,unit_price\n" "2026-09-12,Unknown Product,2,75.50\n"
+    )
+
+    response = client.post(
+        "/import/sales",
+        files={
+            "file": (
+                "sales.csv",
+                csv_content,
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 404
+
+    data = response.json()
+
+    assert data["success"] is False
+    assert "Unknown Product" in data["error"]
+
+    db = TestingSessionLocal()
+
+    try:
+        assert db.query(Sale).count() == 0
+        assert db.query(SaleItem).count() == 0
+    finally:
+        db.close()
+
+
+def test_import_sales_rejects_missing_required_column(client):
+    csv_content = "date,product,quantity\n" "2026-09-12,Test Product,2\n"
+
+    response = client.post(
+        "/import/sales",
+        files={
+            "file": (
+                "sales.csv",
+                csv_content,
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 400
+
+    data = response.json()
+
+    assert data["success"] is False
+    assert "unit_price" in data["error"]
+
+
+def test_import_sales_rejects_invalid_quantity(client):
+    csv_content = (
+        "date,product,quantity,unit_price\n" "2026-09-12,Test Product,invalid,75.50\n"
+    )
+
+    response = client.post(
+        "/import/sales",
+        files={
+            "file": (
+                "sales.csv",
+                csv_content,
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["imported_rows"] == 0
+    assert data["cleaning_report"]["invalid_rows"] == 1
+    assert len(data["cleaning_report"]["errors"]) == 1
+
+    db = TestingSessionLocal()
+
+    try:
+        assert db.query(Sale).count() == 0
+        assert db.query(SaleItem).count() == 0
+    finally:
+        db.close()
+
+
+def test_import_sales_rolls_back_when_seller_not_found(client):
+    csv_content = (
+        "date,product,quantity,unit_price,seller\n"
+        "2026-09-12,Test Product,2,75.50,unknown@example.com\n"
+    )
+
+    response = client.post(
+        "/import/sales",
+        files={
+            "file": (
+                "sales.csv",
+                csv_content,
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 404
+
+    db = TestingSessionLocal()
+
+    try:
+        assert db.query(Sale).count() == 0
+        assert db.query(SaleItem).count() == 0
+    finally:
+        db.close()

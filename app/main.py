@@ -1,12 +1,7 @@
 import logging
 import uuid
 
-from fastapi import (
-    Depends,
-    FastAPI,
-    HTTPException,
-    Request,
-)
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -15,6 +10,11 @@ from app.core.logging import setup_logging
 from app.core.security import get_current_user
 from app.models.user import User
 from app.routers import auth, data_import, products, sales, users
+from app.services.data_import.exceptions import (
+    ImportError,
+    ImportedProductNotFoundError,
+    ImportedSellerNotFoundError,
+)
 
 setup_logging()
 
@@ -43,11 +43,14 @@ def http_error_handler(
     exc: HTTPException,
 ):
     logger.warning(
-        "HTTP error: request_id=%s status_code=%s path=%s detail=%s",
-        request.state.request_id,
-        exc.status_code,
-        request.url.path,
-        exc.detail,
+        "HTTP error",
+        extra={
+            "request_id": request.state.request_id,
+            "status_code": exc.status_code,
+            "path": request.url.path,
+            "method": request.method,
+            "error": str(exc.detail),
+        },
     )
 
     return JSONResponse(
@@ -65,9 +68,12 @@ def validation_error_handler(
     exc: RequestValidationError,
 ):
     logger.warning(
-        "Validation error: request_id=%s path=%s",
-        request.state.request_id,
-        request.url.path,
+        "Validation error",
+        extra={
+            "request_id": request.state.request_id,
+            "path": request.url.path,
+            "method": request.method,
+        },
     )
 
     return JSONResponse(
@@ -80,15 +86,90 @@ def validation_error_handler(
     )
 
 
+@app.exception_handler(ImportedProductNotFoundError)
+def imported_product_not_found_handler(
+    request: Request,
+    exc: ImportedProductNotFoundError,
+):
+    logger.warning(
+        "Import product not found",
+        extra={
+            "request_id": request.state.request_id,
+            "path": request.url.path,
+            "method": request.method,
+            "error": str(exc),
+        },
+    )
+
+    return JSONResponse(
+        status_code=404,
+        content={
+            "success": False,
+            "error": str(exc),
+        },
+    )
+
+
+@app.exception_handler(ImportedSellerNotFoundError)
+def imported_seller_not_found_handler(
+    request: Request,
+    exc: ImportedSellerNotFoundError,
+):
+    logger.warning(
+        "Import seller not found",
+        extra={
+            "request_id": request.state.request_id,
+            "path": request.url.path,
+            "method": request.method,
+            "error": str(exc),
+        },
+    )
+
+    return JSONResponse(
+        status_code=404,
+        content={
+            "success": False,
+            "error": str(exc),
+        },
+    )
+
+
+@app.exception_handler(ImportError)
+def import_error_handler(
+    request: Request,
+    exc: ImportError,
+):
+    logger.warning(
+        "Import error",
+        extra={
+            "request_id": request.state.request_id,
+            "path": request.url.path,
+            "method": request.method,
+            "error": str(exc),
+        },
+    )
+
+    return JSONResponse(
+        status_code=400,
+        content={
+            "success": False,
+            "error": str(exc),
+        },
+    )
+
+
 @app.exception_handler(Exception)
 def general_error_handler(
     request: Request,
     exc: Exception,
 ):
     logger.exception(
-        "Unhandled exception: request_id=%s path=%s",
-        request.state.request_id,
-        request.url.path,
+        "Unhandled exception",
+        extra={
+            "request_id": request.state.request_id,
+            "path": request.url.path,
+            "method": request.method,
+        },
     )
 
     return JSONResponse(
@@ -101,22 +182,31 @@ def general_error_handler(
 
 
 @app.middleware("http")
-async def log_request_middleware(request: Request, call_next):
+async def log_request_middleware(
+    request: Request,
+    call_next,
+):
     request.state.request_id = str(uuid.uuid4())
 
     logger.info(
-        "Request started: request_id=%s method=%s path=%s",
-        request.state.request_id,
-        request.method,
-        request.url.path,
+        "Request started",
+        extra={
+            "request_id": request.state.request_id,
+            "method": request.method,
+            "path": request.url.path,
+        },
     )
 
     response = await call_next(request)
 
     logger.info(
-        "Request completed: request_id=%s status_code=%s",
-        request.state.request_id,
-        response.status_code,
+        "Request completed",
+        extra={
+            "request_id": request.state.request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+        },
     )
 
     return response

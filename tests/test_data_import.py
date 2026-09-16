@@ -1,5 +1,8 @@
 from io import BytesIO
 
+from tests.database import TestingSessionLocal
+from app.models.sales import Sale, SaleItem
+
 
 def test_upload_csv_file(client):
     response = client.post(
@@ -64,3 +67,32 @@ def test_reject_file_larger_than_max_size(client, monkeypatch):
     )
 
     assert response.status_code == 413
+
+
+def test_import_sales_rolls_back_entire_batch_when_domain_error_occurs(client):
+    csv_content = (
+        "date,product,quantity,unit_price\n"
+        "2026-09-12,Test Product,2,75.50\n"
+        "2026-09-12,Unknown Product,3,80.00\n"
+        "2026-09-12,Test Product,1,90.00\n"
+    )
+
+    response = client.post(
+        "/import/sales",
+        files={"file": ("sales.csv", csv_content, "text/csv")},
+    )
+
+    assert response.status_code == 404
+
+    data = response.json()
+
+    assert data["success"] is False
+    assert "Unknown Product" in data["error"]
+
+    db = TestingSessionLocal()
+
+    try:
+        assert db.query(Sale).count() == 0
+        assert db.query(SaleItem).count() == 0
+    finally:
+        db.close()

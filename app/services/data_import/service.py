@@ -6,7 +6,7 @@ from app.services.data_import.domain_mapper import DomainMapper
 from app.services.data_import.import_sale_service import ImportSaleService
 from app.services.data_import.mapper import ColumnMapper
 from app.services.data_import.parser import FileParser
-from app.services.data_import.report import CleaningReport, ImportResult
+from app.services.data_import.report import ImportReport, ImportResult
 from app.services.data_import.validator import ImportValidator
 
 
@@ -39,7 +39,7 @@ class ImportService:
 
         mapped_rows = self.mapper.map(parsed_data.rows)
 
-        report = CleaningReport()
+        report = ImportReport()
 
         cleaned_rows = self.cleaner.clean(
             mapped_rows,
@@ -53,6 +53,8 @@ class ImportService:
             sale_inputs=sale_inputs,
             current_user=current_user,
         )
+
+        report.imported_rows = len(sales)
 
         return ImportResult(
             rows=sales,
