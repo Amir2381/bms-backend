@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from app.core.logging import setup_logging
 from app.core.security import get_current_user
 from app.models.user import User
-from app.routers import analytics, auth, data_import, products, sales, users
+from app.routers import analytics, auth, categories, data_import, products, sales, users
 from app.services.data_import.exceptions import (
     ImportError,
     ImportedProductNotFoundError,
@@ -23,6 +23,7 @@ logger = logging.getLogger("bms")
 app = FastAPI()
 
 app.include_router(auth.router)
+app.include_router(categories.router)
 app.include_router(products.router)
 app.include_router(sales.router)
 app.include_router(users.router)

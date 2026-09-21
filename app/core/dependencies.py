@@ -2,10 +2,23 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.repositories import (
+    category_repository,
     product_repository,
     sale_repository,
     user_repository,
 )
+
+
+def get_category_or_404(category_id: int, db: Session):
+    category = category_repository.get_category(db, category_id)
+
+    if category is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Category not found",
+        )
+
+    return category
 
 
 def get_product_or_404(product_id: int, db: Session):

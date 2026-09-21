@@ -24,6 +24,7 @@ def test_get_products(client):
         assert "name" in product
         assert "price" in product
         assert "stock" in product
+        assert "category" in product
 
         assert isinstance(product["id"], int)
         assert isinstance(product["name"], str)
@@ -47,7 +48,31 @@ def test_create_product(client):
     assert data["name"] == product_data["name"]
     assert data["price"] == product_data["price"]
     assert data["stock"] == product_data["stock"]
+    assert data["category"] is None
     assert "id" in data
+
+
+def test_create_product_with_category(client):
+    category_response = client.post("/categories", json={"name": "Tech"})
+    assert category_response.status_code == 200
+    category_id = category_response.json()["id"]
+
+    product_data = {
+        "name": "Smartphone",
+        "price": 500,
+        "stock": 10,
+        "category_id": category_id,
+    }
+
+    response = client.post("/products", json=product_data)
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["name"] == "Smartphone"
+    assert data["category"] is not None
+    assert data["category"]["id"] == category_id
+    assert data["category"]["name"] == "Tech"
 
 
 def test_create_product_invalid_price(client):

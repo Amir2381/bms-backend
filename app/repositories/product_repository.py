@@ -1,5 +1,5 @@
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.product import Product
 
@@ -13,7 +13,11 @@ def create_product(db: Session, product: Product) -> Product:
 
 
 def get_product(db: Session, product_id: int) -> Product | None:
-    stmt = select(Product).where(Product.id == product_id)
+    stmt = (
+        select(Product)
+        .options(joinedload(Product.category))
+        .where(Product.id == product_id)
+    )
     product = db.scalars(stmt).first()
     return product
 
@@ -28,7 +32,7 @@ def get_all_products(
     skip: int = 0,
     limit: int = 20,
 ) -> tuple[list[Product], int]:
-    stmt = select(Product)
+    stmt = select(Product).options(joinedload(Product.category))
 
     if name is not None:
         stmt = stmt.where(Product.name.contains(name))
@@ -47,13 +51,10 @@ def get_all_products(
 
     if sort == "price":
         stmt = stmt.order_by(Product.price)
-
     elif sort == "-price":
         stmt = stmt.order_by(Product.price.desc())
-
     elif sort == "name":
         stmt = stmt.order_by(Product.name)
-
     elif sort == "-name":
         stmt = stmt.order_by(Product.name.desc())
 
@@ -63,8 +64,8 @@ def get_all_products(
     stmt = stmt.offset(skip)
     stmt = stmt.limit(limit)
 
-    Products = db.scalars(stmt).all()
-    return Products, total
+    products = db.scalars(stmt).unique().all()
+    return list(products), total
 
 
 def update_product(db: Session, product: Product) -> Product:
@@ -83,7 +84,11 @@ def get_product_by_name(
     db: Session,
     name: str,
 ) -> Product | None:
-    stmt = select(Product).where(Product.name == name)
+    stmt = (
+        select(Product)
+        .options(joinedload(Product.category))
+        .where(Product.name == name)
+    )
     product = db.scalars(stmt).first()
 
     return product

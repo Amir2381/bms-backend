@@ -26,6 +26,7 @@ def create_product(
         name=product.name,
         price=product.price,
         stock=product.stock,
+        category_id=product.category_id,
     )
 
     return product_repository.create_product(db, new_product)
@@ -85,6 +86,7 @@ def update_product(
     db_product.name = product.name
     db_product.price = product.price
     db_product.stock = product.stock
+    db_product.category_id = product.category_id
 
     return product_repository.update_product(db, db_product)
 
