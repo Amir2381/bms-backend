@@ -1,7 +1,4 @@
-from datetime import date, timedelta
-from decimal import Decimal
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
@@ -28,14 +25,20 @@ def get_summary_metrics(
 
 @router.get("/trends", response_model=SalesTrendResponse)
 def get_sales_trends(
+    period: str = Query("daily", description="Time period for the trend"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    today = date.today()
+    service = AnalyticsService(db)
+    trend_data = service.get_sales_trend(period)
+
     return SalesTrendResponse(
         trends=[
-            SalesTrendItem(date=today - timedelta(days=2), revenue=Decimal("4500.0")),
-            SalesTrendItem(date=today - timedelta(days=1), revenue=Decimal("6200.0")),
-            SalesTrendItem(date=today, revenue=Decimal("8100.0")),
+            SalesTrendItem(
+                date=point.period,
+                revenue=point.revenue,
+                transaction_count=point.transaction_count,
+            )
+            for point in trend_data.points
         ]
     )

@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import Date, Select, cast, func
@@ -106,3 +107,28 @@ def get_summary_metrics(db: Session) -> dict:
         ),
         "sold_products_count": sold_products_count,
     }
+
+
+def get_sales_trend(db: Session, period: str = "daily") -> list[dict]:
+    stmt = (
+        Select(
+            cast(Sale.sale_date, Date).label("period"),
+            func.sum(SaleItem.quantity * SaleItem.unit_price).label("revenue"),
+            func.count(func.distinct(Sale.id)).label("transaction_count"),
+        )
+        .select_from(Sale)
+        .join(SaleItem, Sale.id == SaleItem.sale_id)
+        .group_by(cast(Sale.sale_date, Date))
+        .order_by(cast(Sale.sale_date, Date))
+    )
+
+    rows = db.execute(stmt).all()
+
+    return [
+        {
+            "period": row.period,
+            "revenue": Decimal(row.revenue) if row.revenue else Decimal("0.0"),
+            "transaction_count": row.transaction_count,
+        }
+        for row in rows
+    ]

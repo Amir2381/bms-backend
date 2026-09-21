@@ -18,6 +18,7 @@ class SummaryMetricsResponse(BaseModel):
 class SalesTrendItem(BaseModel):
     date: date
     revenue: Decimal
+    transaction_count: int
 
 
 class SalesTrendResponse(BaseModel):

@@ -4,6 +4,7 @@ from app.repositories import sale_repository
 from app.services.analytics.types import (
     ProductPerformanceResult,
     SalesTrend,
+    SalesTrendPoint,
     SummaryMetrics,
 )
 
@@ -25,7 +26,16 @@ class AnalyticsService:
         )
 
     def get_sales_trend(self, period: str) -> SalesTrend:
-        raise NotImplementedError
+        data = sale_repository.get_sales_trend(self._db, period)
+        points = [
+            SalesTrendPoint(
+                period=item["period"],
+                revenue=item["revenue"],
+                transaction_count=item["transaction_count"],
+            )
+            for item in data
+        ]
+        return SalesTrend(points=points)
 
     def get_product_performance(self) -> ProductPerformanceResult:
         raise NotImplementedError
