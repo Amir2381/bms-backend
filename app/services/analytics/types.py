@@ -38,3 +38,17 @@ class ProductPerformance:
 @dataclass(frozen=True)
 class ProductPerformanceResult:
     products: list[ProductPerformance]
+
+
+@dataclass(frozen=True)
+class CategoryPerformance:
+    category_id: int | None
+    category_name: str
+    quantity_sold: int
+    revenue: Decimal
+    revenue_share: Decimal
+
+
+@dataclass(frozen=True)
+class CategoryPerformanceResult:
+    categories: list[CategoryPerformance]

@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 
 from app.repositories import sale_repository
 from app.services.analytics.types import (
+    CategoryPerformance,
+    CategoryPerformanceResult,
     ProductPerformance,
     ProductPerformanceResult,
     SalesTrend,
@@ -51,3 +53,17 @@ class AnalyticsService:
             for item in data
         ]
         return ProductPerformanceResult(products=products)
+
+    def get_category_performance(self, limit: int = 10) -> CategoryPerformanceResult:
+        data = sale_repository.get_category_performance(self._db, limit)
+        categories = [
+            CategoryPerformance(
+                category_id=item["category_id"],
+                category_name=item["category_name"],
+                quantity_sold=item["quantity_sold"],
+                revenue=item["revenue"],
+                revenue_share=item["revenue_share"],
+            )
+            for item in data
+        ]
+        return CategoryPerformanceResult(categories=categories)

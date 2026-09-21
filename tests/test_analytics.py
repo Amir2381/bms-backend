@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
+from app.models.category import Category
 from app.models.product import Product
 from app.models.sales import Sale, SaleItem
 from tests.database import TestingSessionLocal
@@ -120,3 +121,49 @@ def test_get_product_performance(client: TestClient):
     assert top_product["product_id"] == product2_id
     assert float(top_product["revenue"]) == 250.0
     assert 71.0 < float(top_product["revenue_share"]) < 72.0
+
+
+def test_get_category_performance(client: TestClient):
+    db = TestingSessionLocal()
+
+    category = Category(name="Electronics")
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+
+    product = Product(name="Smartphone", price=500.0, stock=10, category_id=category.id)
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    sale = Sale(user_id=1)
+    db.add(sale)
+    db.commit()
+    db.refresh(sale)
+
+    item = SaleItem(
+        sale_id=sale.id,
+        product_id=product.id,
+        quantity=2,
+        unit_price=Decimal("450.0"),
+    )
+    db.add(item)
+    db.commit()
+
+    category_id = category.id
+    db.close()
+
+    response = client.get("/analytics/categories/performance?limit=10")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "categories" in data
+    assert len(data["categories"]) >= 1
+
+    target_category = next(
+        (c for c in data["categories"] if c["category_id"] == category_id), None
+    )
+
+    assert target_category is not None
+    assert float(target_category["revenue"]) == 900.0
+    assert target_category["category_name"] == "Electronics"

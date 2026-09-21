@@ -35,3 +35,15 @@ class ProductPerformanceItem(BaseModel):
 
 class ProductPerformanceResponse(BaseModel):
     products: List[ProductPerformanceItem]
+
+
+class CategoryPerformanceItem(BaseModel):
+    category_id: Optional[int]
+    category_name: str
+    quantity_sold: int
+    revenue: Decimal
+    revenue_share: Decimal
+
+
+class CategoryPerformanceResponse(BaseModel):
+    categories: List[CategoryPerformanceItem]

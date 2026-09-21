@@ -5,6 +5,8 @@ from app.core.security import get_current_user
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.analytics import (
+    CategoryPerformanceItem,
+    CategoryPerformanceResponse,
     ProductPerformanceItem,
     ProductPerformanceResponse,
     SalesTrendItem,
@@ -65,5 +67,28 @@ def get_product_performance(
                 revenue_share=p.revenue_share,
             )
             for p in performance_data.products
+        ]
+    )
+
+
+@router.get("/categories/performance", response_model=CategoryPerformanceResponse)
+def get_category_performance(
+    limit: int = Query(10, description="Top N categories", ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    service = AnalyticsService(db)
+    performance_data = service.get_category_performance(limit)
+
+    return CategoryPerformanceResponse(
+        categories=[
+            CategoryPerformanceItem(
+                category_id=c.category_id,
+                category_name=c.category_name,
+                quantity_sold=c.quantity_sold,
+                revenue=c.revenue,
+                revenue_share=c.revenue_share,
+            )
+            for c in performance_data.categories
         ]
     )

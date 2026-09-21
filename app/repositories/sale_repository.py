@@ -3,6 +3,7 @@ from decimal import Decimal
 from sqlalchemy import Date, Select, cast, func
 from sqlalchemy.orm import Session, joinedload
 
+from app.models.category import Category
 from app.models.product import Product
 from app.models.sales import Sale, SaleItem
 
@@ -158,6 +159,43 @@ def get_product_performance(db: Session, limit: int = 10) -> list[dict]:
         {
             "product_id": row.product_id,
             "product_name": row.product_name,
+            "quantity_sold": row.quantity_sold,
+            "revenue": Decimal(row.revenue),
+            "revenue_share": (
+                round((Decimal(row.revenue) / Decimal(total_revenue)) * 100, 2)
+                if total_revenue > 0
+                else Decimal("0.0")
+            ),
+        }
+        for row in rows
+    ]
+
+
+def get_category_performance(db: Session, limit: int = 10) -> list[dict]:
+    total_revenue_stmt = Select(func.sum(SaleItem.quantity * SaleItem.unit_price))
+    total_revenue = db.scalar(total_revenue_stmt) or Decimal("0.0")
+
+    stmt = (
+        Select(
+            Category.id.label("category_id"),
+            func.coalesce(Category.name, "Uncategorized").label("category_name"),
+            func.sum(SaleItem.quantity).label("quantity_sold"),
+            func.sum(SaleItem.quantity * SaleItem.unit_price).label("revenue"),
+        )
+        .select_from(SaleItem)
+        .join(Product, Product.id == SaleItem.product_id)
+        .outerjoin(Category, Category.id == Product.category_id)
+        .group_by(Category.id, Category.name)
+        .order_by(func.sum(SaleItem.quantity * SaleItem.unit_price).desc())
+        .limit(limit)
+    )
+
+    rows = db.execute(stmt).all()
+
+    return [
+        {
+            "category_id": row.category_id,
+            "category_name": row.category_name,
             "quantity_sold": row.quantity_sold,
             "revenue": Decimal(row.revenue),
             "revenue_share": (
