@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories import sale_repository
 from app.services.analytics.types import (
+    ProductPerformance,
     ProductPerformanceResult,
     SalesTrend,
     SalesTrendPoint,
@@ -37,5 +38,16 @@ class AnalyticsService:
         ]
         return SalesTrend(points=points)
 
-    def get_product_performance(self) -> ProductPerformanceResult:
-        raise NotImplementedError
+    def get_product_performance(self, limit: int = 10) -> ProductPerformanceResult:
+        data = sale_repository.get_product_performance(self._db, limit)
+        products = [
+            ProductPerformance(
+                product_id=item["product_id"],
+                product_name=item["product_name"],
+                quantity_sold=item["quantity_sold"],
+                revenue=item["revenue"],
+                revenue_share=item["revenue_share"],
+            )
+            for item in data
+        ]
+        return ProductPerformanceResult(products=products)

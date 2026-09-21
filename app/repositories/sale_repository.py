@@ -1,9 +1,9 @@
-from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import Date, Select, cast, func
 from sqlalchemy.orm import Session, joinedload
 
+from app.models.product import Product
 from app.models.sales import Sale, SaleItem
 
 
@@ -129,6 +129,42 @@ def get_sales_trend(db: Session, period: str = "daily") -> list[dict]:
             "period": row.period,
             "revenue": Decimal(row.revenue) if row.revenue else Decimal("0.0"),
             "transaction_count": row.transaction_count,
+        }
+        for row in rows
+    ]
+
+
+def get_product_performance(db: Session, limit: int = 10) -> list[dict]:
+    total_revenue_stmt = Select(func.sum(SaleItem.quantity * SaleItem.unit_price))
+    total_revenue = db.scalar(total_revenue_stmt) or Decimal("0.0")
+
+    stmt = (
+        Select(
+            Product.id.label("product_id"),
+            Product.name.label("product_name"),
+            func.sum(SaleItem.quantity).label("quantity_sold"),
+            func.sum(SaleItem.quantity * SaleItem.unit_price).label("revenue"),
+        )
+        .select_from(SaleItem)
+        .join(Product, Product.id == SaleItem.product_id)
+        .group_by(Product.id, Product.name)
+        .order_by(func.sum(SaleItem.quantity * SaleItem.unit_price).desc())
+        .limit(limit)
+    )
+
+    rows = db.execute(stmt).all()
+
+    return [
+        {
+            "product_id": row.product_id,
+            "product_name": row.product_name,
+            "quantity_sold": row.quantity_sold,
+            "revenue": Decimal(row.revenue),
+            "revenue_share": (
+                round((Decimal(row.revenue) / Decimal(total_revenue)) * 100, 2)
+                if total_revenue > 0
+                else Decimal("0.0")
+            ),
         }
         for row in rows
     ]

@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
+from app.models.product import Product
 from app.models.sales import Sale, SaleItem
 from tests.database import TestingSessionLocal
 
@@ -78,3 +79,44 @@ def test_get_sales_trends(client: TestClient):
     assert trend is not None
     assert float(trend["revenue"]) == 160.0
     assert trend["transaction_count"] == 2
+
+
+def test_get_product_performance(client: TestClient):
+    db = TestingSessionLocal()
+
+    product2 = Product(name="Premium Mouse", price=25.0, stock=50)
+    db.add(product2)
+    db.commit()
+    db.refresh(product2)
+
+    sale1 = Sale(user_id=1)
+    db.add(sale1)
+    db.commit()
+    db.refresh(sale1)
+
+    item1 = SaleItem(
+        sale_id=sale1.id, product_id=1, quantity=2, unit_price=Decimal("50.0")
+    )
+    item2 = SaleItem(
+        sale_id=sale1.id,
+        product_id=product2.id,
+        quantity=10,
+        unit_price=Decimal("25.0"),
+    )
+    db.add_all([item1, item2])
+    db.commit()
+
+    product2_id = product2.id
+    db.close()
+
+    response = client.get("/analytics/products/performance?limit=10")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "products" in data
+    assert len(data["products"]) == 2
+
+    top_product = data["products"][0]
+    assert top_product["product_id"] == product2_id
+    assert float(top_product["revenue"]) == 250.0
+    assert 71.0 < float(top_product["revenue_share"]) < 72.0

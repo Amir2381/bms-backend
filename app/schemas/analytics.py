@@ -23,3 +23,15 @@ class SalesTrendItem(BaseModel):
 
 class SalesTrendResponse(BaseModel):
     trends: List[SalesTrendItem]
+
+
+class ProductPerformanceItem(BaseModel):
+    product_id: int
+    product_name: str
+    quantity_sold: int
+    revenue: Decimal
+    revenue_share: Decimal
+
+
+class ProductPerformanceResponse(BaseModel):
+    products: List[ProductPerformanceItem]
