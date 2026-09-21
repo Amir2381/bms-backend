@@ -1,6 +1,8 @@
+import datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, Select, cast, func
+from sqlalchemy import Date as SqlDate
+from sqlalchemy import Select, cast, func
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.category import Category
@@ -46,15 +48,28 @@ def delete_sale(db: Session, sale: Sale) -> None:
     db.commit()
 
 
-def get_summary_metrics(db: Session) -> dict:
-    sale_totals_subq = (
-        Select(
-            SaleItem.sale_id,
-            func.sum(SaleItem.quantity * SaleItem.unit_price).label("sale_total"),
-        )
-        .group_by(SaleItem.sale_id)
-        .subquery()
-    )
+def get_summary_metrics(
+    db: Session,
+    start_date: datetime.date | None = None,
+    end_date: datetime.date | None = None,
+) -> dict:
+    sale_totals_stmt = Select(
+        SaleItem.sale_id,
+        func.sum(SaleItem.quantity * SaleItem.unit_price).label("sale_total"),
+    ).select_from(SaleItem)
+
+    if start_date or end_date:
+        sale_totals_stmt = sale_totals_stmt.join(Sale, Sale.id == SaleItem.sale_id)
+        if start_date:
+            sale_totals_stmt = sale_totals_stmt.where(
+                cast(Sale.sale_date, SqlDate) >= start_date
+            )
+        if end_date:
+            sale_totals_stmt = sale_totals_stmt.where(
+                cast(Sale.sale_date, SqlDate) <= end_date
+            )
+
+    sale_totals_subq = sale_totals_stmt.group_by(SaleItem.sale_id).subquery()
 
     metrics_stmt = Select(
         func.sum(sale_totals_subq.c.sale_total).label("total_sales"),
@@ -65,10 +80,24 @@ def get_summary_metrics(db: Session) -> dict:
     )
     metrics_row = db.execute(metrics_stmt).first()
 
-    sold_products_stmt = Select(func.sum(SaleItem.quantity))
+    sold_products_stmt = Select(func.sum(SaleItem.quantity)).select_from(SaleItem)
+    if start_date or end_date:
+        sold_products_stmt = sold_products_stmt.join(Sale, Sale.id == SaleItem.sale_id)
+        if start_date:
+            sold_products_stmt = sold_products_stmt.where(
+                cast(Sale.sale_date, SqlDate) >= start_date
+            )
+        if end_date:
+            sold_products_stmt = sold_products_stmt.where(
+                cast(Sale.sale_date, SqlDate) <= end_date
+            )
     sold_products_count = db.scalar(sold_products_stmt) or 0
 
-    days_stmt = Select(func.count(func.distinct(cast(Sale.sale_date, Date))))
+    days_stmt = Select(func.count(func.distinct(cast(Sale.sale_date, SqlDate))))
+    if start_date:
+        days_stmt = days_stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
+    if end_date:
+        days_stmt = days_stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
     unique_days = db.scalar(days_stmt) or 1
 
     total_sales = (
@@ -110,17 +139,29 @@ def get_summary_metrics(db: Session) -> dict:
     }
 
 
-def get_sales_trend(db: Session, period: str = "daily") -> list[dict]:
+def get_sales_trend(
+    db: Session,
+    period: str = "daily",
+    start_date: datetime.date | None = None,
+    end_date: datetime.date | None = None,
+) -> list[dict]:
     stmt = (
         Select(
-            cast(Sale.sale_date, Date).label("period"),
+            cast(Sale.sale_date, SqlDate).label("period"),
             func.sum(SaleItem.quantity * SaleItem.unit_price).label("revenue"),
             func.count(func.distinct(Sale.id)).label("transaction_count"),
         )
         .select_from(Sale)
         .join(SaleItem, Sale.id == SaleItem.sale_id)
-        .group_by(cast(Sale.sale_date, Date))
-        .order_by(cast(Sale.sale_date, Date))
+    )
+
+    if start_date:
+        stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
+    if end_date:
+        stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
+
+    stmt = stmt.group_by(cast(Sale.sale_date, SqlDate)).order_by(
+        cast(Sale.sale_date, SqlDate)
     )
 
     rows = db.execute(stmt).all()
@@ -135,8 +176,27 @@ def get_sales_trend(db: Session, period: str = "daily") -> list[dict]:
     ]
 
 
-def get_product_performance(db: Session, limit: int = 10) -> list[dict]:
-    total_revenue_stmt = Select(func.sum(SaleItem.quantity * SaleItem.unit_price))
+def get_product_performance(
+    db: Session,
+    limit: int = 10,
+    start_date: datetime.date | None = None,
+    end_date: datetime.date | None = None,
+) -> list[dict]:
+    total_revenue_stmt = Select(
+        func.sum(SaleItem.quantity * SaleItem.unit_price)
+    ).select_from(SaleItem)
+
+    if start_date or end_date:
+        total_revenue_stmt = total_revenue_stmt.join(Sale, Sale.id == SaleItem.sale_id)
+        if start_date:
+            total_revenue_stmt = total_revenue_stmt.where(
+                cast(Sale.sale_date, SqlDate) >= start_date
+            )
+        if end_date:
+            total_revenue_stmt = total_revenue_stmt.where(
+                cast(Sale.sale_date, SqlDate) <= end_date
+            )
+
     total_revenue = db.scalar(total_revenue_stmt) or Decimal("0.0")
 
     stmt = (
@@ -148,7 +208,17 @@ def get_product_performance(db: Session, limit: int = 10) -> list[dict]:
         )
         .select_from(SaleItem)
         .join(Product, Product.id == SaleItem.product_id)
-        .group_by(Product.id, Product.name)
+    )
+
+    if start_date or end_date:
+        stmt = stmt.join(Sale, Sale.id == SaleItem.sale_id)
+        if start_date:
+            stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
+        if end_date:
+            stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
+
+    stmt = (
+        stmt.group_by(Product.id, Product.name)
         .order_by(func.sum(SaleItem.quantity * SaleItem.unit_price).desc())
         .limit(limit)
     )
@@ -171,8 +241,27 @@ def get_product_performance(db: Session, limit: int = 10) -> list[dict]:
     ]
 
 
-def get_category_performance(db: Session, limit: int = 10) -> list[dict]:
-    total_revenue_stmt = Select(func.sum(SaleItem.quantity * SaleItem.unit_price))
+def get_category_performance(
+    db: Session,
+    limit: int = 10,
+    start_date: datetime.date | None = None,
+    end_date: datetime.date | None = None,
+) -> list[dict]:
+    total_revenue_stmt = Select(
+        func.sum(SaleItem.quantity * SaleItem.unit_price)
+    ).select_from(SaleItem)
+
+    if start_date or end_date:
+        total_revenue_stmt = total_revenue_stmt.join(Sale, Sale.id == SaleItem.sale_id)
+        if start_date:
+            total_revenue_stmt = total_revenue_stmt.where(
+                cast(Sale.sale_date, SqlDate) >= start_date
+            )
+        if end_date:
+            total_revenue_stmt = total_revenue_stmt.where(
+                cast(Sale.sale_date, SqlDate) <= end_date
+            )
+
     total_revenue = db.scalar(total_revenue_stmt) or Decimal("0.0")
 
     stmt = (
@@ -185,7 +274,17 @@ def get_category_performance(db: Session, limit: int = 10) -> list[dict]:
         .select_from(SaleItem)
         .join(Product, Product.id == SaleItem.product_id)
         .outerjoin(Category, Category.id == Product.category_id)
-        .group_by(Category.id, Category.name)
+    )
+
+    if start_date or end_date:
+        stmt = stmt.join(Sale, Sale.id == SaleItem.sale_id)
+        if start_date:
+            stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
+        if end_date:
+            stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
+
+    stmt = (
+        stmt.group_by(Category.id, Category.name)
         .order_by(func.sum(SaleItem.quantity * SaleItem.unit_price).desc())
         .limit(limit)
     )

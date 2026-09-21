@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -167,3 +168,32 @@ def test_get_category_performance(client: TestClient):
     assert target_category is not None
     assert float(target_category["revenue"]) == 900.0
     assert target_category["category_name"] == "Electronics"
+
+
+def test_analytics_date_filtering(client: TestClient):
+    db = TestingSessionLocal()
+
+    sale_jan = Sale(user_id=1, sale_date=datetime(2026, 1, 5, tzinfo=timezone.utc))
+    sale_feb = Sale(user_id=1, sale_date=datetime(2026, 2, 10, tzinfo=timezone.utc))
+    db.add_all([sale_jan, sale_feb])
+    db.commit()
+
+    item_jan = SaleItem(
+        sale_id=sale_jan.id, product_id=1, quantity=1, unit_price=Decimal("100.0")
+    )
+    item_feb = SaleItem(
+        sale_id=sale_feb.id, product_id=1, quantity=2, unit_price=Decimal("200.0")
+    )
+    db.add_all([item_jan, item_feb])
+    db.commit()
+    db.close()
+
+    response = client.get(
+        "/analytics/metrics?start_date=2026-02-01&end_date=2026-02-28"
+    )
+    assert response.status_code == 200
+
+    data = response.json()
+    assert float(data["total_sales"]) == 400.0
+    assert data["total_transactions"] == 1
+    assert data["sold_products_count"] == 2

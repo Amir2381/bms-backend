@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -20,21 +22,25 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @router.get("/metrics", response_model=SummaryMetricsResponse)
 def get_summary_metrics(
+    start_date: date | None = Query(None, description="Start date for filtering"),
+    end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     service = AnalyticsService(db)
-    return service.get_summary_metrics()
+    return service.get_summary_metrics(start_date, end_date)
 
 
 @router.get("/trends", response_model=SalesTrendResponse)
 def get_sales_trends(
     period: str = Query("daily", description="Time period for the trend"),
+    start_date: date | None = Query(None, description="Start date for filtering"),
+    end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     service = AnalyticsService(db)
-    trend_data = service.get_sales_trend(period)
+    trend_data = service.get_sales_trend(period, start_date, end_date)
 
     return SalesTrendResponse(
         trends=[
@@ -51,11 +57,13 @@ def get_sales_trends(
 @router.get("/products/performance", response_model=ProductPerformanceResponse)
 def get_product_performance(
     limit: int = Query(10, description="Top N products", ge=1, le=100),
+    start_date: date | None = Query(None, description="Start date for filtering"),
+    end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     service = AnalyticsService(db)
-    performance_data = service.get_product_performance(limit)
+    performance_data = service.get_product_performance(limit, start_date, end_date)
 
     return ProductPerformanceResponse(
         products=[
@@ -74,11 +82,13 @@ def get_product_performance(
 @router.get("/categories/performance", response_model=CategoryPerformanceResponse)
 def get_category_performance(
     limit: int = Query(10, description="Top N categories", ge=1, le=100),
+    start_date: date | None = Query(None, description="Start date for filtering"),
+    end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     service = AnalyticsService(db)
-    performance_data = service.get_category_performance(limit)
+    performance_data = service.get_category_performance(limit, start_date, end_date)
 
     return CategoryPerformanceResponse(
         categories=[

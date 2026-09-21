@@ -1,3 +1,5 @@
+import datetime
+
 from sqlalchemy.orm import Session
 
 from app.repositories import sale_repository
@@ -16,8 +18,12 @@ class AnalyticsService:
     def __init__(self, db: Session) -> None:
         self._db = db
 
-    def get_summary_metrics(self) -> SummaryMetrics:
-        data = sale_repository.get_summary_metrics(self._db)
+    def get_summary_metrics(
+        self,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> SummaryMetrics:
+        data = sale_repository.get_summary_metrics(self._db, start_date, end_date)
         return SummaryMetrics(
             total_sales=data["total_sales"],
             total_transactions=data["total_transactions"],
@@ -28,8 +34,13 @@ class AnalyticsService:
             sold_products_count=data["sold_products_count"],
         )
 
-    def get_sales_trend(self, period: str) -> SalesTrend:
-        data = sale_repository.get_sales_trend(self._db, period)
+    def get_sales_trend(
+        self,
+        period: str,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> SalesTrend:
+        data = sale_repository.get_sales_trend(self._db, period, start_date, end_date)
         points = [
             SalesTrendPoint(
                 period=item["period"],
@@ -40,8 +51,15 @@ class AnalyticsService:
         ]
         return SalesTrend(points=points)
 
-    def get_product_performance(self, limit: int = 10) -> ProductPerformanceResult:
-        data = sale_repository.get_product_performance(self._db, limit)
+    def get_product_performance(
+        self,
+        limit: int = 10,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> ProductPerformanceResult:
+        data = sale_repository.get_product_performance(
+            self._db, limit, start_date, end_date
+        )
         products = [
             ProductPerformance(
                 product_id=item["product_id"],
@@ -54,8 +72,15 @@ class AnalyticsService:
         ]
         return ProductPerformanceResult(products=products)
 
-    def get_category_performance(self, limit: int = 10) -> CategoryPerformanceResult:
-        data = sale_repository.get_category_performance(self._db, limit)
+    def get_category_performance(
+        self,
+        limit: int = 10,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> CategoryPerformanceResult:
+        data = sale_repository.get_category_performance(
+            self._db, limit, start_date, end_date
+        )
         categories = [
             CategoryPerformance(
                 category_id=item["category_id"],
