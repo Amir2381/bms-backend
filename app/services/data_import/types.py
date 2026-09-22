@@ -9,6 +9,7 @@ class RawImportRow(TypedDict, total=False):
     quantity: str
     unit_price: str
     seller: str
+    category: str
 
 
 class CleanImportRow(TypedDict, total=False):
@@ -17,6 +18,7 @@ class CleanImportRow(TypedDict, total=False):
     quantity: int
     unit_price: float
     seller: str
+    category: str
 
 
 @dataclass
@@ -32,3 +34,4 @@ class ImportedSaleInput:
     quantity: int
     unit_price: float
     seller: str = ""
+    category: str = ""

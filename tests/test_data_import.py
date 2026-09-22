@@ -96,3 +96,37 @@ def test_import_sales_rolls_back_entire_batch_when_domain_error_occurs(client):
         assert db.query(SaleItem).count() == 0
     finally:
         db.close()
+
+
+def test_import_sales_with_category_creates_and_links_category(client):
+    csv_content = (
+        "date,product,quantity,unit_price,category\n"
+        "2026-09-12,Test Product,2,75.50, electronics \n"
+    )
+
+    response = client.post(
+        "/import/sales",
+        files={
+            "file": (
+                "sales.csv",
+                csv_content,
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    db = TestingSessionLocal()
+    try:
+        from app.models.category import Category
+        from app.models.product import Product
+
+        category = db.query(Category).filter_by(name="Electronics").first()
+        assert category is not None
+
+        product = db.query(Product).filter_by(name="Test Product").first()
+        assert product is not None
+        assert product.category_id == category.id
+    finally:
+        db.close()

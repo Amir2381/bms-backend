@@ -36,6 +36,7 @@ class BasicDataCleaner:
                     "quantity": self._parse_quantity(row.get("quantity", "")),
                     "unit_price": self._parse_unit_price(row.get("unit_price", "")),
                     "seller": self._clean_seller(row.get("seller", "")),
+                    "category": self._clean_category(row.get("category", "")),
                 }
 
                 duplicate_key = (
@@ -44,6 +45,7 @@ class BasicDataCleaner:
                     cleaned_row["quantity"],
                     cleaned_row["unit_price"],
                     cleaned_row["seller"],
+                    cleaned_row["category"],
                 )
 
                 if duplicate_key in seen_rows:
@@ -107,3 +109,9 @@ class BasicDataCleaner:
     @staticmethod
     def _clean_seller(value: str) -> str:
         return value.strip()
+
+    @staticmethod
+    def _clean_category(value: str) -> str:
+        if not value:
+            return ""
+        return value.strip().title()

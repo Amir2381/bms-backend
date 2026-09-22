@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 
+from app.models.category import Category
 from app.models.sales import Sale, SaleItem
 from app.models.user import User
-from app.repositories import product_repository, user_repository
+from app.repositories import category_repository, product_repository, user_repository
 from app.services.data_import.exceptions import (
     ImportedProductNotFoundError,
     ImportedSellerNotFoundError,
@@ -26,6 +27,17 @@ class ImportSaleService:
             raise ImportedProductNotFoundError(
                 f"Product {sale_input.product!r} not found."
             )
+
+        if sale_input.category:
+            category = category_repository.get_category_by_name(db, sale_input.category)
+            if not category:
+                category = Category(name=sale_input.category)
+                db.add(category)
+                db.flush()
+
+            if product.category_id != category.id:
+                product.category_id = category.id
+                db.add(product)
 
         if sale_input.seller:
             seller = user_repository.get_user_by_email(

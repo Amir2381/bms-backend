@@ -16,6 +16,7 @@ def test_map_clean_rows_to_imported_sale_input():
             "quantity": 2,
             "unit_price": 1200.0,
             "seller": "Amir",
+            "category": "Electronics",
         }
     ]
 
@@ -28,6 +29,7 @@ def test_map_clean_rows_to_imported_sale_input():
             quantity=2,
             unit_price=1200.0,
             seller="Amir",
+            category="Electronics",
         )
     ]
 
@@ -55,6 +57,7 @@ def test_map_allows_missing_seller():
             quantity=2,
             unit_price=1200.0,
             seller="",
+            category="",
         )
     ]
 

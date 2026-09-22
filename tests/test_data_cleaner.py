@@ -17,6 +17,7 @@ def test_clean_valid_rows():
             "quantity": "2",
             "unit_price": "1200",
             "seller": " Amir ",
+            "category": " electronics ",
         }
     ]
 
@@ -29,6 +30,7 @@ def test_clean_valid_rows():
             "quantity": 2,
             "unit_price": 1200.0,
             "seller": "Amir",
+            "category": "Electronics",
         }
     ]
 
@@ -43,6 +45,7 @@ def test_clean_allows_empty_seller():
             "quantity": "2",
             "unit_price": "1200",
             "seller": "",
+            "category": "",
         }
     ]
 
@@ -69,6 +72,7 @@ def test_clean_rejects_invalid_values(field, value):
         "quantity": "2",
         "unit_price": "1200",
         "seller": "",
+        "category": "",
     }
     row[field] = value
 
@@ -99,6 +103,7 @@ def test_clean_rejects_invalid_numeric_values(field, value):
         "quantity": "2",
         "unit_price": "1200",
         "seller": "",
+        "category": "",
     }
     row[field] = value
 
@@ -121,6 +126,7 @@ def test_clean_rejects_empty_product():
         "quantity": "2",
         "unit_price": "1200",
         "seller": "",
+        "category": "",
     }
 
     result = cleaner.clean([row], report)
@@ -143,6 +149,7 @@ def test_clean_report_tracks_invalid_rows():
             "quantity": "2",
             "unit_price": "1200",
             "seller": "",
+            "category": "",
         },
         {
             "date": "invalid",
@@ -150,6 +157,7 @@ def test_clean_report_tracks_invalid_rows():
             "quantity": "1",
             "unit_price": "25",
             "seller": "",
+            "category": "",
         },
     ]
 
@@ -173,6 +181,7 @@ def test_clean_report_tracks_duplicates():
         "quantity": "2",
         "unit_price": "1200",
         "seller": "",
+        "category": "",
     }
 
     rows = [row, row.copy()]

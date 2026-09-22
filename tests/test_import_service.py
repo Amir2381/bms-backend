@@ -4,10 +4,6 @@ from app.models.sales import Sale, SaleItem
 from app.models.user import User
 from app.repositories import product_repository
 from tests.database import TestingSessionLocal
-from app.models.sales import Sale, SaleItem
-from app.models.user import User
-from app.repositories import product_repository
-from tests.database import TestingSessionLocal
 from app.services.data_import.cleaner import BasicDataCleaner
 from app.services.data_import.csv_parser import CsvFileParser
 from app.services.data_import.domain_mapper import BasicDomainMapper
@@ -43,9 +39,9 @@ def test_import_service_processes_csv_with_aliases(tmp_path):
     csv_file = tmp_path / "sales.csv"
 
     csv_file.write_text(
-        "sale_date,product_name,qty,price,user\n"
-        "2026-09-10,Laptop,2,1200,Amir\n"
-        "2026-09-11,Mouse,5,25,Reza\n",
+        "sale_date,product_name,qty,price,user,category\n"
+        "2026-09-10,Laptop,2,1200,Amir,electronics\n"
+        "2026-09-11,Mouse,5,25,Reza, accessories \n",
         encoding="utf-8",
     )
 
@@ -64,6 +60,7 @@ def test_import_service_processes_csv_with_aliases(tmp_path):
             quantity=2,
             unit_price=1200.0,
             seller="Amir",
+            category="Electronics",
         ),
         ImportedSaleInput(
             sale_date=datetime(2026, 9, 11),
@@ -71,6 +68,7 @@ def test_import_service_processes_csv_with_aliases(tmp_path):
             quantity=5,
             unit_price=25.0,
             seller="Reza",
+            category="Accessories",
         ),
     ]
 

@@ -28,6 +28,12 @@ COLUMN_ALIASES = {
         "user_id",
         "salesperson",
     },
+    "category": {
+        "category",
+        "category_name",
+        "group",
+        "type",
+    },
 }
 
 REQUIRED_COLUMNS = {
