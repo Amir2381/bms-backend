@@ -2,7 +2,6 @@ from datetime import date
 from typing import Any, Iterator
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
@@ -18,10 +17,13 @@ from app.schemas.analytics import (
     SummaryMetricsResponse,
 )
 from app.services.analytics.service import AnalyticsService
-from app.services.reporting.csv_strategy import CsvReportStrategy
-from app.services.reporting.generator import ReportGenerator
+from app.services.reporting.utils import stream_csv_response
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
+
+
+def get_analytics_service(db: Session = Depends(get_db)) -> AnalyticsService:
+    return AnalyticsService(db)
 
 
 @router.get("/metrics", response_model=SummaryMetricsResponse)
@@ -29,9 +31,8 @@ def get_summary_metrics(
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    service = AnalyticsService(db)
     return service.get_summary_metrics(start_date, end_date)
 
 
@@ -41,9 +42,8 @@ def get_sales_trends(
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    service = AnalyticsService(db)
     trend_data = service.get_sales_trend(period, start_date, end_date)
 
     return SalesTrendResponse(
@@ -64,9 +64,8 @@ def export_sales_trends(
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    service = AnalyticsService(db)
     trend_data = service.get_sales_trend(period, start_date, end_date)
 
     def data_generator() -> Iterator[dict[str, Any]]:
@@ -78,13 +77,7 @@ def export_sales_trends(
             }
 
     headers = ["Period", "Revenue", "Transaction Count"]
-    generator = ReportGenerator(CsvReportStrategy())
-
-    return StreamingResponse(
-        generator.generate(headers, data_generator()),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=sales_trends.csv"},
-    )
+    return stream_csv_response(headers, data_generator(), "sales_trends.csv")
 
 
 @router.get("/products/performance", response_model=ProductPerformanceResponse)
@@ -93,9 +86,8 @@ def get_product_performance(
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    service = AnalyticsService(db)
     performance_data = service.get_product_performance(limit, start_date, end_date)
 
     return ProductPerformanceResponse(
@@ -118,9 +110,8 @@ def export_product_performance(
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    service = AnalyticsService(db)
     performance_data = service.get_product_performance(limit, start_date, end_date)
 
     def data_generator() -> Iterator[dict[str, Any]]:
@@ -140,13 +131,7 @@ def export_product_performance(
         "Revenue",
         "Revenue Share (%)",
     ]
-    generator = ReportGenerator(CsvReportStrategy())
-
-    return StreamingResponse(
-        generator.generate(headers, data_generator()),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=product_performance.csv"},
-    )
+    return stream_csv_response(headers, data_generator(), "product_performance.csv")
 
 
 @router.get("/categories/performance", response_model=CategoryPerformanceResponse)
@@ -155,9 +140,8 @@ def get_category_performance(
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    service = AnalyticsService(db)
     performance_data = service.get_category_performance(limit, start_date, end_date)
 
     return CategoryPerformanceResponse(
@@ -180,9 +164,8 @@ def export_category_performance(
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    service = AnalyticsService(db)
     performance_data = service.get_category_performance(limit, start_date, end_date)
 
     def data_generator() -> Iterator[dict[str, Any]]:
@@ -202,12 +185,4 @@ def export_category_performance(
         "Revenue",
         "Revenue Share (%)",
     ]
-    generator = ReportGenerator(CsvReportStrategy())
-
-    return StreamingResponse(
-        generator.generate(headers, data_generator()),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=category_performance.csv"
-        },
-    )
+    return stream_csv_response(headers, data_generator(), "category_performance.csv")
