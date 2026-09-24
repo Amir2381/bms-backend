@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.models.product import Product
     from app.models.user import User
     from app.models.branch import Branch
+    from app.models.customer import Customer
 
 
 class Sale(Base):
@@ -18,6 +19,7 @@ class Sale(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     branch_id: Mapped[int] = mapped_column(ForeignKey("branches.id"))
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"))
     sale_date: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc)
     )
@@ -29,6 +31,9 @@ class Sale(Base):
         back_populates="sales",
     )
     branch: Mapped["Branch"] = relationship(
+        back_populates="sales",
+    )
+    customer: Mapped["Customer | None"] = relationship(
         back_populates="sales",
     )
     items: Mapped[list["SaleItem"]] = relationship(

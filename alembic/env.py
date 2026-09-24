@@ -10,6 +10,7 @@ from app.models.product import Product
 from app.models.sales import Sale, SaleItem
 from app.models.user import User
 from app.models.branch import Branch
+from app.models.customer import Customer
 
 config = context.config
 

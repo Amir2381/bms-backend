@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.product import ProductResponse
 from app.schemas.user import UserResponse
+from app.schemas.customer import CustomerResponse
 
 
 class SaleItemCreate(BaseModel):
@@ -22,12 +23,14 @@ class SaleItemResponse(BaseModel):
 
 class SaleCreate(BaseModel):
     user_id: int
+    customer_id: int | None = None
     items: list[SaleItemCreate]
 
 
 class SaleResponse(BaseModel):
     id: int
     user: UserResponse
+    customer: CustomerResponse | None = None
     items: list[SaleItemResponse]
     sale_date: datetime
     created_at: datetime

@@ -10,6 +10,12 @@ class ProductNotFoundError(Exception):
         super().__init__(f"Product {product_id} not found")
 
 
+class CustomerNotFoundError(Exception):
+    def __init__(self, customer_id: int):
+        self.customer_id = customer_id
+        super().__init__(f"Customer {customer_id} not found")
+
+
 class InsufficientStockError(Exception):
     def __init__(
         self,

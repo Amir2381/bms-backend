@@ -3,12 +3,18 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.models.sales import Sale, SaleItem
-from app.repositories import product_repository, sale_repository, user_repository
+from app.repositories import (
+    product_repository,
+    sale_repository,
+    user_repository,
+    customer_repository,
+)
 from app.schemas.sale import SaleCreate
 from app.services.exceptions import (
     InsufficientStockError,
     ProductNotFoundError,
     UserNotFoundError,
+    CustomerNotFoundError,
 )
 
 
@@ -17,6 +23,11 @@ def create_sale(db: Session, sale: SaleCreate) -> Sale:
 
     if user is None:
         raise UserNotFoundError(sale.user_id)
+
+    if sale.customer_id is not None:
+        customer = customer_repository.get_customer(db, sale.customer_id)
+        if customer is None:
+            raise CustomerNotFoundError(sale.customer_id)
 
     sale_items = []
 
@@ -47,6 +58,7 @@ def create_sale(db: Session, sale: SaleCreate) -> Sale:
     new_sale = Sale(
         user_id=sale.user_id,
         branch_id=user.branch_id,
+        customer_id=sale.customer_id,
         sale_date=datetime.now(UTC),
         created_at=datetime.now(UTC),
         items=sale_items,

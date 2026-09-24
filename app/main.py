@@ -9,7 +9,16 @@ from fastapi.responses import JSONResponse
 from app.core.logging import setup_logging
 from app.core.security import get_current_user
 from app.models.user import User
-from app.routers import analytics, auth, categories, data_import, products, sales, users
+from app.routers import (
+    analytics,
+    auth,
+    categories,
+    customers,
+    data_import,
+    products,
+    sales,
+    users,
+)
 from app.services.data_import.exceptions import (
     ImportError,
     ImportedProductNotFoundError,
@@ -29,6 +38,7 @@ app.include_router(sales.router)
 app.include_router(users.router)
 app.include_router(data_import.router)
 app.include_router(analytics.router)
+app.include_router(customers.router)
 
 app.add_middleware(
     CORSMiddleware,
