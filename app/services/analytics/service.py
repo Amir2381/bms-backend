@@ -2,6 +2,7 @@ import datetime
 
 from sqlalchemy.orm import Session
 
+from app.models.user import User, UserRole
 from app.repositories import sale_repository
 from app.services.analytics.types import (
     CategoryPerformance,
@@ -18,12 +19,21 @@ class AnalyticsService:
     def __init__(self, db: Session) -> None:
         self._db = db
 
+    def _get_target_user_id(self, current_user: User) -> int | None:
+        if current_user.role == UserRole.SALESPERSON:
+            return current_user.id
+        return None
+
     def get_summary_metrics(
         self,
+        current_user: User,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
     ) -> SummaryMetrics:
-        data = sale_repository.get_summary_metrics(self._db, start_date, end_date)
+        user_id = self._get_target_user_id(current_user)
+        data = sale_repository.get_summary_metrics(
+            self._db, start_date, end_date, user_id
+        )
         return SummaryMetrics(
             total_sales=data["total_sales"],
             total_transactions=data["total_transactions"],
@@ -36,11 +46,15 @@ class AnalyticsService:
 
     def get_sales_trend(
         self,
+        current_user: User,
         period: str,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
     ) -> SalesTrend:
-        data = sale_repository.get_sales_trend(self._db, period, start_date, end_date)
+        user_id = self._get_target_user_id(current_user)
+        data = sale_repository.get_sales_trend(
+            self._db, period, start_date, end_date, user_id
+        )
         points = [
             SalesTrendPoint(
                 period=item["period"],
@@ -53,12 +67,14 @@ class AnalyticsService:
 
     def get_product_performance(
         self,
+        current_user: User,
         limit: int = 10,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
     ) -> ProductPerformanceResult:
+        user_id = self._get_target_user_id(current_user)
         data = sale_repository.get_product_performance(
-            self._db, limit, start_date, end_date
+            self._db, limit, start_date, end_date, user_id
         )
         products = [
             ProductPerformance(
@@ -74,12 +90,14 @@ class AnalyticsService:
 
     def get_category_performance(
         self,
+        current_user: User,
         limit: int = 10,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
     ) -> CategoryPerformanceResult:
+        user_id = self._get_target_user_id(current_user)
         data = sale_repository.get_category_performance(
-            self._db, limit, start_date, end_date
+            self._db, limit, start_date, end_date, user_id
         )
         categories = [
             CategoryPerformance(

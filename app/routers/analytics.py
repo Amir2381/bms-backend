@@ -33,7 +33,7 @@ def get_summary_metrics(
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    return service.get_summary_metrics(start_date, end_date)
+    return service.get_summary_metrics(current_user, start_date, end_date)
 
 
 @router.get("/trends", response_model=SalesTrendResponse)
@@ -44,7 +44,7 @@ def get_sales_trends(
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    trend_data = service.get_sales_trend(period, start_date, end_date)
+    trend_data = service.get_sales_trend(current_user, period, start_date, end_date)
 
     return SalesTrendResponse(
         trends=[
@@ -66,7 +66,7 @@ def export_sales_trends(
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    trend_data = service.get_sales_trend(period, start_date, end_date)
+    trend_data = service.get_sales_trend(current_user, period, start_date, end_date)
 
     def data_generator() -> Iterator[dict[str, Any]]:
         for point in trend_data.points:
@@ -88,7 +88,9 @@ def get_product_performance(
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    performance_data = service.get_product_performance(limit, start_date, end_date)
+    performance_data = service.get_product_performance(
+        current_user, limit, start_date, end_date
+    )
 
     return ProductPerformanceResponse(
         products=[
@@ -112,7 +114,9 @@ def export_product_performance(
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    performance_data = service.get_product_performance(limit, start_date, end_date)
+    performance_data = service.get_product_performance(
+        current_user, limit, start_date, end_date
+    )
 
     def data_generator() -> Iterator[dict[str, Any]]:
         for p in performance_data.products:
@@ -142,7 +146,9 @@ def get_category_performance(
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    performance_data = service.get_category_performance(limit, start_date, end_date)
+    performance_data = service.get_category_performance(
+        current_user, limit, start_date, end_date
+    )
 
     return CategoryPerformanceResponse(
         categories=[
@@ -166,7 +172,9 @@ def export_category_performance(
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    performance_data = service.get_category_performance(limit, start_date, end_date)
+    performance_data = service.get_category_performance(
+        current_user, limit, start_date, end_date
+    )
 
     def data_generator() -> Iterator[dict[str, Any]]:
         for c in performance_data.categories:
