@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.category import Category
 from app.models.product import Product
 from app.models.sales import Sale, SaleItem
+from app.models.user import User
 
 
 def create_sale(db: Session, sale: Sale) -> Sale:
@@ -330,6 +331,50 @@ def get_category_performance(
                 if total_revenue > 0
                 else Decimal("0.0")
             ),
+        }
+        for row in rows
+    ]
+
+
+def get_salesperson_performance(
+    db: Session,
+    limit: int = 10,
+    start_date: datetime.date | None = None,
+    end_date: datetime.date | None = None,
+) -> list[dict]:
+    stmt = (
+        Select(
+            User.id.label("user_id"),
+            User.full_name.label("user_name"),
+            func.sum(SaleItem.quantity).label("quantity_sold"),
+            func.sum(SaleItem.quantity * SaleItem.unit_price).label("revenue"),
+            func.count(func.distinct(Sale.id)).label("transaction_count"),
+        )
+        .select_from(SaleItem)
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .join(User, User.id == Sale.user_id)
+    )
+
+    if start_date:
+        stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
+    if end_date:
+        stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
+
+    stmt = (
+        stmt.group_by(User.id, User.full_name)
+        .order_by(func.sum(SaleItem.quantity * SaleItem.unit_price).desc())
+        .limit(limit)
+    )
+
+    rows = db.execute(stmt).all()
+
+    return [
+        {
+            "user_id": row.user_id,
+            "user_name": row.user_name,
+            "quantity_sold": row.quantity_sold or 0,
+            "revenue": Decimal(row.revenue) if row.revenue else Decimal("0.0"),
+            "transaction_count": row.transaction_count or 0,
         }
         for row in rows
     ]

@@ -52,3 +52,17 @@ class CategoryPerformance:
 @dataclass(frozen=True)
 class CategoryPerformanceResult:
     categories: list[CategoryPerformance]
+
+
+@dataclass(frozen=True)
+class SalespersonPerformance:
+    user_id: int
+    user_name: str
+    quantity_sold: int
+    revenue: Decimal
+    transaction_count: int
+
+
+@dataclass(frozen=True)
+class SalespersonPerformanceResult:
+    salespersons: list[SalespersonPerformance]

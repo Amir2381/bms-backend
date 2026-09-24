@@ -4,6 +4,7 @@ from typing import Any, Iterator
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_admin_user
 from app.core.security import get_current_user
 from app.db.database import get_db
 from app.models.user import User
@@ -12,6 +13,8 @@ from app.schemas.analytics import (
     CategoryPerformanceResponse,
     ProductPerformanceItem,
     ProductPerformanceResponse,
+    SalespersonPerformanceItem,
+    SalespersonPerformanceResponse,
     SalesTrendItem,
     SalesTrendResponse,
     SummaryMetricsResponse,
@@ -194,3 +197,27 @@ def export_category_performance(
         "Revenue Share (%)",
     ]
     return stream_csv_response(headers, data_generator(), "category_performance.csv")
+
+
+@router.get("/salespersons/performance", response_model=SalespersonPerformanceResponse)
+def get_salesperson_performance(
+    limit: int = Query(10, description="Top N salespersons", ge=1, le=100),
+    start_date: date | None = Query(None, description="Start date for filtering"),
+    end_date: date | None = Query(None, description="End date for filtering"),
+    current_user: User = Depends(get_admin_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    performance_data = service.get_salesperson_performance(limit, start_date, end_date)
+
+    return SalespersonPerformanceResponse(
+        salespersons=[
+            SalespersonPerformanceItem(
+                user_id=sp.user_id,
+                user_name=sp.user_name,
+                quantity_sold=sp.quantity_sold,
+                revenue=sp.revenue,
+                transaction_count=sp.transaction_count,
+            )
+            for sp in performance_data.salespersons
+        ]
+    )

@@ -9,6 +9,8 @@ from app.services.analytics.types import (
     CategoryPerformanceResult,
     ProductPerformance,
     ProductPerformanceResult,
+    SalespersonPerformance,
+    SalespersonPerformanceResult,
     SalesTrend,
     SalesTrendPoint,
     SummaryMetrics,
@@ -110,3 +112,24 @@ class AnalyticsService:
             for item in data
         ]
         return CategoryPerformanceResult(categories=categories)
+
+    def get_salesperson_performance(
+        self,
+        limit: int = 10,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> SalespersonPerformanceResult:
+        data = sale_repository.get_salesperson_performance(
+            self._db, limit, start_date, end_date
+        )
+        salespersons = [
+            SalespersonPerformance(
+                user_id=item["user_id"],
+                user_name=item["user_name"],
+                quantity_sold=item["quantity_sold"],
+                revenue=item["revenue"],
+                transaction_count=item["transaction_count"],
+            )
+            for item in data
+        ]
+        return SalespersonPerformanceResult(salespersons=salespersons)

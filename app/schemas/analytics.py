@@ -47,3 +47,15 @@ class CategoryPerformanceItem(BaseModel):
 
 class CategoryPerformanceResponse(BaseModel):
     categories: List[CategoryPerformanceItem]
+
+
+class SalespersonPerformanceItem(BaseModel):
+    user_id: int
+    user_name: str
+    quantity_sold: int
+    revenue: Decimal
+    transaction_count: int
+
+
+class SalespersonPerformanceResponse(BaseModel):
+    salespersons: List[SalespersonPerformanceItem]
