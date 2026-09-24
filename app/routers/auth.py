@@ -28,11 +28,8 @@ def login(
             detail="Invalid email or password",
         )
 
-    access_token = create_access_token(
-        {
-            "sub": db_user.email,
-        }
-    )
+    access_token = create_access_token(db_user)
+
     return {
         "access_token": access_token,
         "token_type": "bearer",

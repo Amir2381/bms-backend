@@ -69,18 +69,16 @@ def verify_password(
     )
 
 
-def create_access_token(data: dict[str, Any]) -> str:
-    to_encode = data.copy()
-
+def create_access_token(user: User) -> str:
     expire = datetime.now(UTC) + timedelta(
         minutes=settings.access_token_expire_minutes,
     )
 
-    to_encode.update(
-        {
-            "exp": expire,
-        }
-    )
+    to_encode = {
+        "sub": user.email,
+        "role": user.role.value,
+        "exp": expire,
+    }
 
     encoded_jwt = jwt.encode(
         to_encode,

@@ -6,7 +6,7 @@ from app.core.security import get_current_user
 from app.db.database import Base, get_db
 from app.main import app
 from app.models.product import Product
-from app.models.user import User
+from app.models.user import User, UserRole
 from tests.database import TestingSessionLocal, override_get_db, test_engine
 
 
@@ -16,6 +16,7 @@ def override_get_current_user():
         full_name="Test User",
         email="test@example.com",
         hashed_password="hashed_password",
+        role=UserRole.ADMIN,
     )
 
 
@@ -26,6 +27,8 @@ app.dependency_overrides[get_current_user] = override_get_current_user
 @pytest.fixture(autouse=True)
 def setup_database():
     Base.metadata.drop_all(bind=test_engine)
+    test_engine.dispose()
+
     Base.metadata.create_all(bind=test_engine)
 
     db: Session = TestingSessionLocal()
@@ -34,6 +37,7 @@ def setup_database():
         full_name="Test User",
         email="test@example.com",
         hashed_password="hashed_password",
+        role=UserRole.SALESPERSON,
     )
 
     test_product = Product(
@@ -49,6 +53,7 @@ def setup_database():
     yield
 
     Base.metadata.drop_all(bind=test_engine)
+    test_engine.dispose()
 
 
 @pytest.fixture
