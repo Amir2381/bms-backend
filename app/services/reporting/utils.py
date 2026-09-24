@@ -3,18 +3,27 @@ from typing import Any, Iterable
 from fastapi.responses import StreamingResponse
 
 from app.services.reporting.csv_strategy import CsvReportStrategy
+from app.services.reporting.excel_strategy import ExcelReportStrategy
 from app.services.reporting.generator import ReportGenerator
 
 
-def stream_csv_response(
+def stream_report_response(
     headers: list[str],
     data: Iterable[dict[str, Any]],
-    filename: str,
+    filename_prefix: str,
+    export_format: str = "csv",
 ) -> StreamingResponse:
-    generator = ReportGenerator(CsvReportStrategy())
+    if export_format.lower() == "excel":
+        generator = ReportGenerator(ExcelReportStrategy())
+        filename = f"{filename_prefix}.xlsx"
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    else:
+        generator = ReportGenerator(CsvReportStrategy())
+        filename = f"{filename_prefix}.csv"
+        media_type = "text/csv"
 
     return StreamingResponse(
         generator.generate(headers, data),
-        media_type="text/csv",
+        media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )

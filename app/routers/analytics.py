@@ -20,7 +20,7 @@ from app.schemas.analytics import (
     SummaryMetricsResponse,
 )
 from app.services.analytics.service import AnalyticsService
-from app.services.reporting.utils import stream_csv_response
+from app.services.reporting.utils import stream_report_response
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -66,6 +66,9 @@ def export_sales_trends(
     period: str = Query("daily", description="Time period for the trend"),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    export_format: str = Query(
+        "csv", pattern="^(csv|excel)$", description="Export format"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
@@ -80,7 +83,9 @@ def export_sales_trends(
             }
 
     headers = ["Period", "Revenue", "Transaction Count"]
-    return stream_csv_response(headers, data_generator(), "sales_trends.csv")
+    return stream_report_response(
+        headers, data_generator(), "sales_trends", export_format
+    )
 
 
 @router.get("/products/performance", response_model=ProductPerformanceResponse)
@@ -114,6 +119,9 @@ def export_product_performance(
     limit: int = Query(100, description="Top N products", ge=1, le=10000),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    export_format: str = Query(
+        "csv", pattern="^(csv|excel)$", description="Export format"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
@@ -138,7 +146,9 @@ def export_product_performance(
         "Revenue",
         "Revenue Share (%)",
     ]
-    return stream_csv_response(headers, data_generator(), "product_performance.csv")
+    return stream_report_response(
+        headers, data_generator(), "product_performance", export_format
+    )
 
 
 @router.get("/categories/performance", response_model=CategoryPerformanceResponse)
@@ -172,6 +182,9 @@ def export_category_performance(
     limit: int = Query(100, description="Top N categories", ge=1, le=10000),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    export_format: str = Query(
+        "csv", pattern="^(csv|excel)$", description="Export format"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
@@ -196,7 +209,9 @@ def export_category_performance(
         "Revenue",
         "Revenue Share (%)",
     ]
-    return stream_csv_response(headers, data_generator(), "category_performance.csv")
+    return stream_report_response(
+        headers, data_generator(), "category_performance", export_format
+    )
 
 
 @router.get("/salespersons/performance", response_model=SalespersonPerformanceResponse)
