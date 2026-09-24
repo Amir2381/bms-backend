@@ -14,6 +14,7 @@ class SummaryMetrics:
     lowest_sale: Decimal | None
     average_daily_sales: Decimal
     sold_products_count: int
+    average_clv: Decimal
 
 
 @dataclass(frozen=True)
@@ -68,3 +69,18 @@ class SalespersonPerformance:
 @dataclass(frozen=True)
 class SalespersonPerformanceResult:
     salespersons: list[SalespersonPerformance]
+
+
+@dataclass(frozen=True)
+class CustomerPerformance:
+    customer_id: int
+    customer_name: str
+    customer_phone: str
+    revenue: Decimal
+    profit: Decimal
+    transaction_count: int
+
+
+@dataclass(frozen=True)
+class CustomerPerformanceResult:
+    customers: list[CustomerPerformance]

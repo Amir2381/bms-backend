@@ -6,6 +6,7 @@ from sqlalchemy import Select, cast, func
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.category import Category
+from app.models.customer import Customer
 from app.models.product import Product
 from app.models.sales import Sale, SaleItem
 from app.models.user import User
@@ -118,6 +119,24 @@ def get_summary_metrics(
 
     unique_days = db.scalar(days_stmt) or 1
 
+    unique_customers_stmt = (
+        Select(func.count(func.distinct(Sale.customer_id)))
+        .select_from(Sale)
+        .where(Sale.customer_id.is_not(None))
+    )
+    if start_date:
+        unique_customers_stmt = unique_customers_stmt.where(
+            cast(Sale.sale_date, SqlDate) >= start_date
+        )
+    if end_date:
+        unique_customers_stmt = unique_customers_stmt.where(
+            cast(Sale.sale_date, SqlDate) <= end_date
+        )
+    if user_id is not None:
+        unique_customers_stmt = unique_customers_stmt.where(Sale.user_id == user_id)
+
+    unique_customers = db.scalar(unique_customers_stmt) or 0
+
     total_sales = (
         metrics_row.total_sales
         if metrics_row and metrics_row.total_sales
@@ -146,6 +165,12 @@ def get_summary_metrics(
         else Decimal("0.0")
     )
 
+    average_clv = (
+        (Decimal(total_sales) / Decimal(unique_customers))
+        if unique_customers > 0
+        else Decimal("0.0")
+    )
+
     return {
         "total_sales": Decimal(total_sales),
         "total_profit": total_profit,
@@ -168,6 +193,7 @@ def get_summary_metrics(
             else Decimal("0.0")
         ),
         "sold_products_count": sold_products_count,
+        "average_clv": round(average_clv, 2),
     }
 
 
@@ -390,6 +416,57 @@ def get_salesperson_performance(
             "user_name": row.user_name,
             "quantity_sold": row.quantity_sold or 0,
             "revenue": Decimal(row.revenue) if row.revenue else Decimal("0.0"),
+            "transaction_count": row.transaction_count or 0,
+        }
+        for row in rows
+    ]
+
+
+def get_top_customers(
+    db: Session,
+    limit: int = 10,
+    start_date: datetime.date | None = None,
+    end_date: datetime.date | None = None,
+    user_id: int | None = None,
+) -> list[dict]:
+    profit_expression = SaleItem.quantity * (SaleItem.unit_price - SaleItem.cost_price)
+
+    stmt = (
+        Select(
+            Customer.id.label("customer_id"),
+            Customer.full_name.label("customer_name"),
+            Customer.phone.label("customer_phone"),
+            func.sum(SaleItem.quantity * SaleItem.unit_price).label("revenue"),
+            func.sum(profit_expression).label("profit"),
+            func.count(func.distinct(Sale.id)).label("transaction_count"),
+        )
+        .select_from(SaleItem)
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .join(Customer, Customer.id == Sale.customer_id)
+    )
+
+    if start_date:
+        stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
+    if end_date:
+        stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
+    if user_id is not None:
+        stmt = stmt.where(Sale.user_id == user_id)
+
+    stmt = (
+        stmt.group_by(Customer.id, Customer.full_name, Customer.phone)
+        .order_by(func.sum(profit_expression).desc())
+        .limit(limit)
+    )
+
+    rows = db.execute(stmt).all()
+
+    return [
+        {
+            "customer_id": row.customer_id,
+            "customer_name": row.customer_name,
+            "customer_phone": row.customer_phone,
+            "revenue": Decimal(row.revenue) if row.revenue else Decimal("0.0"),
+            "profit": Decimal(row.profit) if row.profit else Decimal("0.0"),
             "transaction_count": row.transaction_count or 0,
         }
         for row in rows

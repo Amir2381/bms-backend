@@ -11,6 +11,8 @@ from app.services.analytics.types import (
     ProductPerformanceResult,
     SalespersonPerformance,
     SalespersonPerformanceResult,
+    CustomerPerformance,
+    CustomerPerformanceResult,
     SalesTrend,
     SalesTrendPoint,
     SummaryMetrics,
@@ -46,6 +48,7 @@ class AnalyticsService:
             lowest_sale=data["lowest_sale"],
             average_daily_sales=data["average_daily_sales"],
             sold_products_count=data["sold_products_count"],
+            average_clv=data["average_clv"],
         )
 
     def get_sales_trend(
@@ -135,3 +138,27 @@ class AnalyticsService:
             for item in data
         ]
         return SalespersonPerformanceResult(salespersons=salespersons)
+
+    def get_top_customers(
+        self,
+        current_user: User,
+        limit: int = 10,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ) -> CustomerPerformanceResult:
+        user_id = self._get_target_user_id(current_user)
+        data = sale_repository.get_top_customers(
+            self._db, limit, start_date, end_date, user_id
+        )
+        customers = [
+            CustomerPerformance(
+                customer_id=item["customer_id"],
+                customer_name=item["customer_name"],
+                customer_phone=item["customer_phone"],
+                revenue=item["revenue"],
+                profit=item["profit"],
+                transaction_count=item["transaction_count"],
+            )
+            for item in data
+        ]
+        return CustomerPerformanceResult(customers=customers)

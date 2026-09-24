@@ -15,6 +15,7 @@ class SummaryMetricsResponse(BaseModel):
     lowest_sale: Optional[Decimal]
     average_daily_sales: Decimal
     sold_products_count: int
+    average_clv: Decimal
 
 
 class SalesTrendItem(BaseModel):
@@ -61,6 +62,19 @@ class SalespersonPerformanceItem(BaseModel):
 
 class SalespersonPerformanceResponse(BaseModel):
     salespersons: List[SalespersonPerformanceItem]
+
+
+class CustomerPerformanceItem(BaseModel):
+    customer_id: int
+    customer_name: str
+    customer_phone: str
+    revenue: Decimal
+    profit: Decimal
+    transaction_count: int
+
+
+class CustomerPerformanceResponse(BaseModel):
+    customers: List[CustomerPerformanceItem]
 
 
 class DashboardResponse(BaseModel):

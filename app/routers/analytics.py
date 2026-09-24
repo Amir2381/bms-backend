@@ -11,6 +11,8 @@ from app.models.user import User
 from app.schemas.analytics import (
     CategoryPerformanceItem,
     CategoryPerformanceResponse,
+    CustomerPerformanceItem,
+    CustomerPerformanceResponse,
     DashboardResponse,
     ProductPerformanceItem,
     ProductPerformanceResponse,
@@ -239,6 +241,72 @@ def get_salesperson_performance(
     )
 
 
+@router.get("/customers/top", response_model=CustomerPerformanceResponse)
+def get_top_customers(
+    limit: int = Query(10, description="Top N customers", ge=1, le=100),
+    start_date: date | None = Query(None, description="Start date for filtering"),
+    end_date: date | None = Query(None, description="End date for filtering"),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    performance_data = service.get_top_customers(
+        current_user, limit, start_date, end_date
+    )
+
+    return CustomerPerformanceResponse(
+        customers=[
+            CustomerPerformanceItem(
+                customer_id=c.customer_id,
+                customer_name=c.customer_name,
+                customer_phone=c.customer_phone,
+                revenue=c.revenue,
+                profit=c.profit,
+                transaction_count=c.transaction_count,
+            )
+            for c in performance_data.customers
+        ]
+    )
+
+
+@router.get("/customers/top/export")
+def export_top_customers(
+    limit: int = Query(100, description="Top N customers", ge=1, le=10000),
+    start_date: date | None = Query(None, description="Start date for filtering"),
+    end_date: date | None = Query(None, description="End date for filtering"),
+    export_format: str = Query(
+        "csv", pattern="^(csv|excel)$", description="Export format"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    performance_data = service.get_top_customers(
+        current_user, limit, start_date, end_date
+    )
+
+    def data_generator() -> Iterator[dict[str, Any]]:
+        for c in performance_data.customers:
+            yield {
+                "Customer ID": c.customer_id,
+                "Name": c.customer_name,
+                "Phone": c.customer_phone,
+                "Revenue": str(c.revenue),
+                "Profit": str(c.profit),
+                "Transaction Count": c.transaction_count,
+            }
+
+    headers = [
+        "Customer ID",
+        "Name",
+        "Phone",
+        "Revenue",
+        "Profit",
+        "Transaction Count",
+    ]
+    return stream_report_response(
+        headers, data_generator(), "top_customers", export_format
+    )
+
+
 @router.get("/dashboard", response_model=DashboardResponse)
 def get_dashboard_data(
     period: str = Query("daily", description="Time period for the trend"),
@@ -258,6 +326,7 @@ def get_dashboard_data(
         lowest_sale=metrics_data.lowest_sale,
         average_daily_sales=metrics_data.average_daily_sales,
         sold_products_count=metrics_data.sold_products_count,
+        average_clv=metrics_data.average_clv,
     )
 
     trend_data = service.get_sales_trend(current_user, period, start_date, end_date)
