@@ -63,6 +63,7 @@ def test_create_imported_sale_with_seller():
             full_name="Imported Seller",
             email="seller@example.com",
             hashed_password="hashed",
+            branch_id=1,
         )
 
         db.add(seller)

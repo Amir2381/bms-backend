@@ -22,11 +22,22 @@ COLUMN_ALIASES = {
         "price",
         "sale_price",
     },
+    "cost_price": {
+        "cost_price",
+        "cost",
+        "cogs",
+    },
     "seller": {
         "seller",
         "user",
         "user_id",
         "salesperson",
+    },
+    "customer_phone": {
+        "customer_phone",
+        "phone",
+        "mobile",
+        "customer",
     },
     "category": {
         "category",

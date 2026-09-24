@@ -28,7 +28,9 @@ def test_map_clean_rows_to_imported_sale_input():
             product="Laptop",
             quantity=2,
             unit_price=1200.0,
+            cost_price=None,
             seller="Amir",
+            customer_phone="",
             category="Electronics",
         )
     ]
@@ -56,7 +58,9 @@ def test_map_allows_missing_seller():
             product="Laptop",
             quantity=2,
             unit_price=1200.0,
+            cost_price=None,
             seller="",
+            customer_phone="",
             category="",
         )
     ]

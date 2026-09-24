@@ -59,7 +59,9 @@ def test_import_service_processes_csv_with_aliases(tmp_path):
             product="Laptop",
             quantity=2,
             unit_price=1200.0,
+            cost_price=None,
             seller="Amir",
+            customer_phone="",
             category="Electronics",
         ),
         ImportedSaleInput(
@@ -67,7 +69,9 @@ def test_import_service_processes_csv_with_aliases(tmp_path):
             product="Mouse",
             quantity=5,
             unit_price=25.0,
+            cost_price=None,
             seller="Reza",
+            customer_phone="",
             category="Accessories",
         ),
     ]

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_admin_user, get_user_or_404
 from app.core.security import hash_password
 from app.db.database import get_db
+from app.models.branch import Branch
 from app.models.user import User
 from app.repositories import user_repository
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
@@ -27,10 +28,17 @@ def create_user(
             detail="Email already exists",
         )
 
+    default_branch = db.query(Branch).first()
+    if not default_branch:
+        default_branch = Branch(name="Main Branch")
+        db.add(default_branch)
+        db.flush()
+
     new_user = User(
         full_name=user.full_name,
         email=user.email,
         hashed_password=hash_password(user.password),
+        branch_id=default_branch.id,
     )
 
     return user_repository.create_user(db, new_user)

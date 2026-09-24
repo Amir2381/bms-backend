@@ -12,8 +12,8 @@ from tests.database import TestingSessionLocal
 def test_get_summary_metrics(client: TestClient):
     db = TestingSessionLocal()
 
-    sale1 = Sale(user_id=1)
-    sale2 = Sale(user_id=1)
+    sale1 = Sale(user_id=1, branch_id=1)
+    sale2 = Sale(user_id=1, branch_id=1)
     db.add_all([sale1, sale2])
     db.commit()
     db.refresh(sale1)
@@ -48,8 +48,8 @@ def test_get_summary_metrics(client: TestClient):
 def test_get_sales_trends(client: TestClient):
     db = TestingSessionLocal()
 
-    sale1 = Sale(user_id=1)
-    sale2 = Sale(user_id=1)
+    sale1 = Sale(user_id=1, branch_id=1)
+    sale2 = Sale(user_id=1, branch_id=1)
     db.add_all([sale1, sale2])
     db.commit()
     db.refresh(sale1)
@@ -91,7 +91,7 @@ def test_get_product_performance(client: TestClient):
     db.commit()
     db.refresh(product2)
 
-    sale1 = Sale(user_id=1)
+    sale1 = Sale(user_id=1, branch_id=1)
     db.add(sale1)
     db.commit()
     db.refresh(sale1)
@@ -137,7 +137,7 @@ def test_get_category_performance(client: TestClient):
     db.commit()
     db.refresh(product)
 
-    sale = Sale(user_id=1)
+    sale = Sale(user_id=1, branch_id=1)
     db.add(sale)
     db.commit()
     db.refresh(sale)
@@ -173,8 +173,12 @@ def test_get_category_performance(client: TestClient):
 def test_analytics_date_filtering(client: TestClient):
     db = TestingSessionLocal()
 
-    sale_jan = Sale(user_id=1, sale_date=datetime(2026, 1, 5, tzinfo=timezone.utc))
-    sale_feb = Sale(user_id=1, sale_date=datetime(2026, 2, 10, tzinfo=timezone.utc))
+    sale_jan = Sale(
+        user_id=1, branch_id=1, sale_date=datetime(2026, 1, 5, tzinfo=timezone.utc)
+    )
+    sale_feb = Sale(
+        user_id=1, branch_id=1, sale_date=datetime(2026, 2, 10, tzinfo=timezone.utc)
+    )
     db.add_all([sale_jan, sale_feb])
     db.commit()
 

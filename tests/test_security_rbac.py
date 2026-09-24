@@ -12,6 +12,7 @@ def test_salesperson_cannot_access_admin_endpoints(client):
             email="sales@example.com",
             hashed_password="hashed",
             role=UserRole.SALESPERSON,
+            branch_id=1,
         )
 
     app.dependency_overrides[get_current_user] = override_get_salesperson

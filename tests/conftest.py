@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_current_user
 from app.db.database import Base, get_db
 from app.main import app
+from app.models.branch import Branch
 from app.models.product import Product
 from app.models.user import User, UserRole
 from tests.database import TestingSessionLocal, override_get_db, test_engine
@@ -17,6 +18,7 @@ def override_get_current_user():
         email="test@example.com",
         hashed_password="hashed_password",
         role=UserRole.ADMIN,
+        branch_id=1,
     )
 
 
@@ -33,11 +35,16 @@ def setup_database():
 
     db: Session = TestingSessionLocal()
 
+    test_branch = Branch(name="Main Branch", location="Headquarters")
+    db.add(test_branch)
+    db.flush()
+
     test_user = User(
         full_name="Test User",
         email="test@example.com",
         hashed_password="hashed_password",
         role=UserRole.SALESPERSON,
+        branch_id=test_branch.id,
     )
 
     test_product = Product(

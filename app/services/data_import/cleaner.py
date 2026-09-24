@@ -35,7 +35,9 @@ class BasicDataCleaner:
                     "product": self._clean_product(row.get("product", "")),
                     "quantity": self._parse_quantity(row.get("quantity", "")),
                     "unit_price": self._parse_unit_price(row.get("unit_price", "")),
-                    "seller": self._clean_seller(row.get("seller", "")),
+                    "cost_price": self._parse_optional_float(row.get("cost_price", "")),
+                    "seller": self._clean_string(row.get("seller", "")),
+                    "customer_phone": self._clean_string(row.get("customer_phone", "")),
                     "category": self._clean_category(row.get("category", "")),
                 }
 
@@ -44,7 +46,9 @@ class BasicDataCleaner:
                     cleaned_row["product"],
                     cleaned_row["quantity"],
                     cleaned_row["unit_price"],
+                    cleaned_row["cost_price"],
                     cleaned_row["seller"],
+                    cleaned_row["customer_phone"],
                     cleaned_row["category"],
                 )
 
@@ -98,6 +102,18 @@ class BasicDataCleaner:
         return unit_price
 
     @staticmethod
+    def _parse_optional_float(value: str) -> float | None:
+        if not value.strip():
+            return None
+        try:
+            val = float(value.strip())
+            if val < 0:
+                raise InvalidImportValueError(f"Value cannot be negative: {value!r}")
+            return val
+        except ValueError as exc:
+            raise InvalidImportValueError(f"Invalid numeric value: {value!r}") from exc
+
+    @staticmethod
     def _clean_product(value: str) -> str:
         product = value.strip()
 
@@ -107,7 +123,7 @@ class BasicDataCleaner:
         return product
 
     @staticmethod
-    def _clean_seller(value: str) -> str:
+    def _clean_string(value: str) -> str:
         return value.strip()
 
     @staticmethod

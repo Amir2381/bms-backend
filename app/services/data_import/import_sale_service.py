@@ -1,9 +1,15 @@
 from sqlalchemy.orm import Session
 
 from app.models.category import Category
+from app.models.customer import Customer
 from app.models.sales import Sale, SaleItem
 from app.models.user import User
-from app.repositories import category_repository, product_repository, user_repository
+from app.repositories import (
+    category_repository,
+    customer_repository,
+    product_repository,
+    user_repository,
+)
 from app.services.data_import.exceptions import (
     ImportedProductNotFoundError,
     ImportedSellerNotFoundError,
@@ -39,6 +45,19 @@ class ImportSaleService:
                 product.category_id = category.id
                 db.add(product)
 
+        customer_id = None
+        if sale_input.customer_phone:
+            customer = customer_repository.get_customer_by_phone(
+                db, sale_input.customer_phone
+            )
+            if not customer:
+                customer = Customer(
+                    phone=sale_input.customer_phone, full_name="Imported Customer"
+                )
+                db.add(customer)
+                db.flush()
+            customer_id = customer.id
+
         if sale_input.seller:
             seller = user_repository.get_user_by_email(
                 db,
@@ -50,18 +69,25 @@ class ImportSaleService:
                     f"Seller {sale_input.seller!r} not found."
                 )
 
-            user_id = seller.id
+            target_user = seller
         else:
-            user_id = current_user.id
+            target_user = current_user
 
         sale_item = SaleItem(
             product_id=product.id,
             quantity=sale_input.quantity,
             unit_price=sale_input.unit_price,
+            cost_price=(
+                sale_input.cost_price
+                if sale_input.cost_price is not None
+                else product.cost_price
+            ),
         )
 
         sale = Sale(
-            user_id=user_id,
+            user_id=target_user.id,
+            branch_id=target_user.branch_id,
+            customer_id=customer_id,
             sale_date=sale_input.sale_date,
             items=[sale_item],
         )

@@ -18,7 +18,9 @@ class BasicDomainMapper:
                 product=row["product"],
                 quantity=row["quantity"],
                 unit_price=row["unit_price"],
+                cost_price=row.get("cost_price"),
                 seller=row.get("seller", ""),
+                customer_phone=row.get("customer_phone", ""),
                 category=row.get("category", ""),
             )
             for row in rows

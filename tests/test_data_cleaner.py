@@ -29,7 +29,9 @@ def test_clean_valid_rows():
             "product": "Laptop",
             "quantity": 2,
             "unit_price": 1200.0,
+            "cost_price": None,
             "seller": "Amir",
+            "customer_phone": "",
             "category": "Electronics",
         }
     ]
