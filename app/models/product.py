@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -16,6 +16,7 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column()
     price: Mapped[float] = mapped_column()
+    cost_price: Mapped[float] = mapped_column(Numeric(10, 2), default=0.0)
     stock: Mapped[int] = mapped_column(default=0)
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
 

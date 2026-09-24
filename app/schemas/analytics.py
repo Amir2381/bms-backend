@@ -7,6 +7,8 @@ from pydantic import BaseModel
 
 class SummaryMetricsResponse(BaseModel):
     total_sales: Decimal
+    total_profit: Decimal
+    profit_margin: Decimal
     total_transactions: int
     average_order_value: Decimal
     highest_sale: Optional[Decimal]

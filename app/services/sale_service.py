@@ -40,11 +40,13 @@ def create_sale(db: Session, sale: SaleCreate) -> Sale:
                 product_id=product.id,
                 quantity=item.quantity,
                 unit_price=product.price,
+                cost_price=product.cost_price,
             )
         )
 
     new_sale = Sale(
         user_id=sale.user_id,
+        branch_id=user.branch_id,
         sale_date=datetime.now(UTC),
         created_at=datetime.now(UTC),
         items=sale_items,

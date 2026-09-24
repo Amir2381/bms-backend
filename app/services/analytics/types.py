@@ -6,6 +6,8 @@ from decimal import Decimal
 @dataclass(frozen=True)
 class SummaryMetrics:
     total_sales: Decimal
+    total_profit: Decimal
+    profit_margin: Decimal
     total_transactions: int
     average_order_value: Decimal
     highest_sale: Decimal | None

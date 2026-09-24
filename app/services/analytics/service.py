@@ -38,6 +38,8 @@ class AnalyticsService:
         )
         return SummaryMetrics(
             total_sales=data["total_sales"],
+            total_profit=data["total_profit"],
+            profit_margin=data["profit_margin"],
             total_transactions=data["total_transactions"],
             average_order_value=data["average_order_value"],
             highest_sale=data["highest_sale"],

@@ -62,6 +62,7 @@ def get_summary_metrics(
     sale_totals_stmt = Select(
         SaleItem.sale_id,
         func.sum(SaleItem.quantity * SaleItem.unit_price).label("sale_total"),
+        func.sum(SaleItem.quantity * SaleItem.cost_price).label("cost_total"),
     ).select_from(SaleItem)
 
     if start_date or end_date or user_id is not None:
@@ -81,6 +82,7 @@ def get_summary_metrics(
 
     metrics_stmt = Select(
         func.sum(sale_totals_subq.c.sale_total).label("total_sales"),
+        func.sum(sale_totals_subq.c.cost_total).label("total_cost"),
         func.count(sale_totals_subq.c.sale_id).label("total_transactions"),
         func.avg(sale_totals_subq.c.sale_total).label("average_order_value"),
         func.max(sale_totals_subq.c.sale_total).label("highest_sale"),
@@ -121,6 +123,11 @@ def get_summary_metrics(
         if metrics_row and metrics_row.total_sales
         else Decimal("0.0")
     )
+    total_cost = (
+        metrics_row.total_cost
+        if metrics_row and metrics_row.total_cost
+        else Decimal("0.0")
+    )
     total_transactions = (
         metrics_row.total_transactions
         if metrics_row and metrics_row.total_transactions
@@ -132,8 +139,17 @@ def get_summary_metrics(
         else Decimal("0.0")
     )
 
+    total_profit = Decimal(total_sales) - Decimal(total_cost)
+    profit_margin = (
+        (total_profit / Decimal(total_sales) * 100)
+        if total_sales > 0
+        else Decimal("0.0")
+    )
+
     return {
         "total_sales": Decimal(total_sales),
+        "total_profit": total_profit,
+        "profit_margin": round(profit_margin, 2),
         "total_transactions": total_transactions,
         "average_order_value": Decimal(average_order_value),
         "highest_sale": (

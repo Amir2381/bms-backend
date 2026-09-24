@@ -250,6 +250,8 @@ def get_dashboard_data(
     metrics_data = service.get_summary_metrics(current_user, start_date, end_date)
     metrics_response = SummaryMetricsResponse(
         total_sales=metrics_data.total_sales,
+        total_profit=metrics_data.total_profit,
+        profit_margin=metrics_data.profit_margin,
         total_transactions=metrics_data.total_transactions,
         average_order_value=metrics_data.average_order_value,
         highest_sale=metrics_data.highest_sale,

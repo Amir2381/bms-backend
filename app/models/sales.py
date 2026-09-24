@@ -45,6 +45,7 @@ class SaleItem(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
     quantity: Mapped[int] = mapped_column()
     unit_price: Mapped[float] = mapped_column(Numeric(10, 2))
+    cost_price: Mapped[float] = mapped_column(Numeric(10, 2), default=0.0)
 
     sale: Mapped["Sale"] = relationship(
         back_populates="items",

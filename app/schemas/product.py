@@ -6,6 +6,7 @@ from app.schemas.category import CategoryResponse
 class ProductBase(BaseModel):
     name: str = Field(min_length=3, max_length=100)
     price: float = Field(gt=0)
+    cost_price: float = Field(ge=0, default=0.0)
     stock: int = Field(ge=0)
     category_id: int | None = None
 
