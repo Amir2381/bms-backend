@@ -16,6 +16,8 @@ from app.schemas.analytics import (
     CustomerPerformanceItem,
     CustomerPerformanceResponse,
     DashboardResponse,
+    InventoryAlertItem,
+    InventoryAlertResponse,
     ProductCrossSellItem,
     ProductPerformanceItem,
     ProductPerformanceResponse,
@@ -338,6 +340,31 @@ def get_cross_selling(
                 ],
             )
             for item in result.items
+        ]
+    )
+
+
+@router.get("/inventory-alerts", response_model=InventoryAlertResponse)
+def get_inventory_alerts(
+    days_threshold: int = Query(7, description="Threshold in days to trigger an alert"),
+    lookback_days: int = Query(
+        30, description="Lookback period in days for daily run rate calculation"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    result = service.get_inventory_alerts(current_user, days_threshold, lookback_days)
+
+    return InventoryAlertResponse(
+        alerts=[
+            InventoryAlertItem(
+                product_id=alert.product_id,
+                product_name=alert.product_name,
+                current_stock=alert.current_stock,
+                daily_run_rate=alert.daily_run_rate,
+                days_remaining=alert.days_remaining,
+            )
+            for alert in result.alerts
         ]
     )
 

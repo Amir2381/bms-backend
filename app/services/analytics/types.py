@@ -103,3 +103,17 @@ class ProductCrossSell:
 @dataclass(frozen=True)
 class CrossSellingResult:
     items: list[ProductCrossSell]
+
+
+@dataclass(frozen=True)
+class InventoryAlert:
+    product_id: int
+    product_name: str
+    current_stock: int
+    daily_run_rate: Decimal
+    days_remaining: Decimal | None
+
+
+@dataclass(frozen=True)
+class InventoryAlertResult:
+    alerts: list[InventoryAlert]

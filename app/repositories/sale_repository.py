@@ -1,7 +1,7 @@
 import datetime
 from decimal import Decimal
 
-from sqlalchemy import Date as SqlDate
+from sqlalchemy import Date as SqlDate, Numeric
 from sqlalchemy import Select, cast, func
 from sqlalchemy.orm import Session, aliased, joinedload
 
@@ -529,3 +529,64 @@ def get_cross_selling_products(
             )
 
     return list(results.values())
+
+
+def get_inventory_alerts(
+    db: Session,
+    days_threshold: int = 7,
+    lookback_days: int = 30,
+    user_id: int | None = None,
+) -> list[dict]:
+    lookback_date = datetime.datetime.now(
+        datetime.timezone.utc
+    ).date() - datetime.timedelta(days=lookback_days)
+
+    sales_subq_stmt = (
+        Select(SaleItem.product_id, func.sum(SaleItem.quantity).label("total_sold"))
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .where(cast(Sale.sale_date, SqlDate) >= lookback_date)
+    )
+
+    if user_id is not None:
+        sales_subq_stmt = sales_subq_stmt.where(Sale.user_id == user_id)
+
+    sales_subq = sales_subq_stmt.group_by(SaleItem.product_id).subquery()
+
+    daily_run_rate = cast(sales_subq.c.total_sold, Numeric(10, 4)) / lookback_days
+
+    days_remaining = cast(Product.stock, Numeric(10, 4)) / func.nullif(
+        daily_run_rate, 0
+    )
+
+    stmt = (
+        Select(
+            Product.id.label("product_id"),
+            Product.name.label("product_name"),
+            Product.stock.label("current_stock"),
+            func.coalesce(daily_run_rate, 0).label("daily_run_rate"),
+            days_remaining.label("days_remaining"),
+        )
+        .select_from(Product)
+        .join(sales_subq, Product.id == sales_subq.c.product_id)
+        .where((days_remaining <= days_threshold) | (Product.stock == 0))
+        .order_by(days_remaining.asc().nulls_last())
+    )
+
+    rows = db.execute(stmt).all()
+
+    return [
+        {
+            "product_id": row.product_id,
+            "product_name": row.product_name,
+            "current_stock": row.current_stock,
+            "daily_run_rate": (
+                Decimal(row.daily_run_rate)
+                if row.daily_run_rate is not None
+                else Decimal("0.0")
+            ),
+            "days_remaining": (
+                Decimal(row.days_remaining) if row.days_remaining is not None else None
+            ),
+        }
+        for row in rows
+    ]

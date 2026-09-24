@@ -93,6 +93,18 @@ class CrossSellingResponse(BaseModel):
     items: List[ProductCrossSellItem]
 
 
+class InventoryAlertItem(BaseModel):
+    product_id: int
+    product_name: str
+    current_stock: int
+    daily_run_rate: Decimal
+    days_remaining: Optional[Decimal]
+
+
+class InventoryAlertResponse(BaseModel):
+    alerts: List[InventoryAlertItem]
+
+
 class DashboardResponse(BaseModel):
     metrics: SummaryMetricsResponse
     trends: SalesTrendResponse

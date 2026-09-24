@@ -9,6 +9,8 @@ from app.services.analytics.types import (
     CategoryPerformanceResult,
     CrossSellingResult,
     CrossSellRecommendation,
+    InventoryAlert,
+    InventoryAlertResult,
     ProductCrossSell,
     ProductPerformance,
     ProductPerformanceResult,
@@ -193,3 +195,26 @@ class AnalyticsService:
             for item in data
         ]
         return CrossSellingResult(items=items)
+
+    def get_inventory_alerts(
+        self,
+        current_user: User,
+        days_threshold: int = 7,
+        lookback_days: int = 30,
+    ) -> InventoryAlertResult:
+        user_id = self._get_target_user_id(current_user)
+        data = sale_repository.get_inventory_alerts(
+            self._db, days_threshold, lookback_days, user_id
+        )
+
+        alerts = [
+            InventoryAlert(
+                product_id=item["product_id"],
+                product_name=item["product_name"],
+                current_stock=item["current_stock"],
+                daily_run_rate=item["daily_run_rate"],
+                days_remaining=item["days_remaining"],
+            )
+            for item in data
+        ]
+        return InventoryAlertResult(alerts=alerts)
