@@ -1,6 +1,8 @@
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.security import get_current_user
+from app.models.user import User, UserRole
 from app.repositories import (
     category_repository,
     product_repository,
@@ -55,3 +57,13 @@ def get_user_or_404(user_id: int, db: Session):
         )
 
     return user
+
+
+def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="Not enough permissions",
+        )
+
+    return current_user

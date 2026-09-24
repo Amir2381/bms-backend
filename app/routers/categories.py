@@ -1,17 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_category_or_404
-from app.core.security import get_current_user
+from app.core.dependencies import get_admin_user, get_category_or_404
 from app.db.database import get_db
 from app.models.category import Category
-from app.models.user import User
 from app.repositories import category_repository
 from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate
 
 router = APIRouter(
     prefix="/categories",
     tags=["Categories"],
+    dependencies=[Depends(get_admin_user)],
 )
 
 
@@ -19,7 +18,6 @@ router = APIRouter(
 def create_category(
     category: CategoryCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
     existing_category = category_repository.get_category_by_name(db, category.name)
     if existing_category:
@@ -52,7 +50,6 @@ def update_category(
     category_id: int,
     category: CategoryUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
     db_category = get_category_or_404(category_id, db)
 
@@ -71,7 +68,6 @@ def update_category(
 def delete_category(
     category_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
     db_category = get_category_or_404(category_id, db)
     category_repository.delete_category(db, db_category)

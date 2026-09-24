@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import get_current_user
+from app.core.dependencies import get_admin_user
 from app.db.database import get_db
 from app.models.user import User
 from app.services.data_import.cleaner import BasicDataCleaner
@@ -45,7 +45,7 @@ def create_import_service(file_path: str) -> ImportService:
 async def import_sales(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_admin_user),
 ):
     temporary_file_path = None
 
