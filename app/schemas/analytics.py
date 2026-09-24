@@ -59,3 +59,9 @@ class SalespersonPerformanceItem(BaseModel):
 
 class SalespersonPerformanceResponse(BaseModel):
     salespersons: List[SalespersonPerformanceItem]
+
+
+class DashboardResponse(BaseModel):
+    metrics: SummaryMetricsResponse
+    trends: SalesTrendResponse
+    top_products: ProductPerformanceResponse

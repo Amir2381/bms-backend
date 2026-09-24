@@ -11,6 +11,7 @@ from app.models.user import User
 from app.schemas.analytics import (
     CategoryPerformanceItem,
     CategoryPerformanceResponse,
+    DashboardResponse,
     ProductPerformanceItem,
     ProductPerformanceResponse,
     SalespersonPerformanceItem,
@@ -235,4 +236,58 @@ def get_salesperson_performance(
             )
             for sp in performance_data.salespersons
         ]
+    )
+
+
+@router.get("/dashboard", response_model=DashboardResponse)
+def get_dashboard_data(
+    period: str = Query("daily", description="Time period for the trend"),
+    start_date: date | None = Query(None, description="Start date for filtering"),
+    end_date: date | None = Query(None, description="End date for filtering"),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    metrics_data = service.get_summary_metrics(current_user, start_date, end_date)
+    metrics_response = SummaryMetricsResponse(
+        total_sales=metrics_data.total_sales,
+        total_transactions=metrics_data.total_transactions,
+        average_order_value=metrics_data.average_order_value,
+        highest_sale=metrics_data.highest_sale,
+        lowest_sale=metrics_data.lowest_sale,
+        average_daily_sales=metrics_data.average_daily_sales,
+        sold_products_count=metrics_data.sold_products_count,
+    )
+
+    trend_data = service.get_sales_trend(current_user, period, start_date, end_date)
+    trends_response = SalesTrendResponse(
+        trends=[
+            SalesTrendItem(
+                date=point.period,
+                revenue=point.revenue,
+                transaction_count=point.transaction_count,
+            )
+            for point in trend_data.points
+        ]
+    )
+
+    product_data = service.get_product_performance(
+        current_user, limit=5, start_date=start_date, end_date=end_date
+    )
+    products_response = ProductPerformanceResponse(
+        products=[
+            ProductPerformanceItem(
+                product_id=p.product_id,
+                product_name=p.product_name,
+                quantity_sold=p.quantity_sold,
+                revenue=p.revenue,
+                revenue_share=p.revenue_share,
+            )
+            for p in product_data.products
+        ]
+    )
+
+    return DashboardResponse(
+        metrics=metrics_response,
+        trends=trends_response,
+        top_products=products_response,
     )
