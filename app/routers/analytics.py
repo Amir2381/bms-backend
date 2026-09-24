@@ -11,9 +11,12 @@ from app.models.user import User
 from app.schemas.analytics import (
     CategoryPerformanceItem,
     CategoryPerformanceResponse,
+    CrossSellingResponse,
+    CrossSellRecommendation,
     CustomerPerformanceItem,
     CustomerPerformanceResponse,
     DashboardResponse,
+    ProductCrossSellItem,
     ProductPerformanceItem,
     ProductPerformanceResponse,
     SalespersonPerformanceItem,
@@ -304,6 +307,38 @@ def export_top_customers(
     ]
     return stream_report_response(
         headers, data_generator(), "top_customers", export_format
+    )
+
+
+@router.get("/cross-selling", response_model=CrossSellingResponse)
+def get_cross_selling(
+    product_id: int | None = Query(
+        None, description="Filter recommendations for a specific product"
+    ),
+    limit_per_product: int = Query(
+        3, description="Number of recommendations per product"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    result = service.get_cross_selling(current_user, product_id, limit_per_product)
+
+    return CrossSellingResponse(
+        items=[
+            ProductCrossSellItem(
+                product_id=item.product_id,
+                product_name=item.product_name,
+                recommendations=[
+                    CrossSellRecommendation(
+                        product_id=rec.product_id,
+                        product_name=rec.product_name,
+                        frequency=rec.frequency,
+                    )
+                    for rec in item.recommendations
+                ],
+            )
+            for item in result.items
+        ]
     )
 
 

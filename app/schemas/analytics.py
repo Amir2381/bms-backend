@@ -77,6 +77,22 @@ class CustomerPerformanceResponse(BaseModel):
     customers: List[CustomerPerformanceItem]
 
 
+class CrossSellRecommendation(BaseModel):
+    product_id: int
+    product_name: str
+    frequency: int
+
+
+class ProductCrossSellItem(BaseModel):
+    product_id: int
+    product_name: str
+    recommendations: List[CrossSellRecommendation]
+
+
+class CrossSellingResponse(BaseModel):
+    items: List[ProductCrossSellItem]
+
+
 class DashboardResponse(BaseModel):
     metrics: SummaryMetricsResponse
     trends: SalesTrendResponse

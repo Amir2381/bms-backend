@@ -7,6 +7,9 @@ from app.repositories import sale_repository
 from app.services.analytics.types import (
     CategoryPerformance,
     CategoryPerformanceResult,
+    CrossSellingResult,
+    CrossSellRecommendation,
+    ProductCrossSell,
     ProductPerformance,
     ProductPerformanceResult,
     SalespersonPerformance,
@@ -162,3 +165,31 @@ class AnalyticsService:
             for item in data
         ]
         return CustomerPerformanceResult(customers=customers)
+
+    def get_cross_selling(
+        self,
+        current_user: User,
+        product_id: int | None = None,
+        limit_per_product: int = 3,
+    ) -> CrossSellingResult:
+        user_id = self._get_target_user_id(current_user)
+        data = sale_repository.get_cross_selling_products(
+            self._db, limit_per_product, product_id, user_id
+        )
+
+        items = [
+            ProductCrossSell(
+                product_id=item["product_id"],
+                product_name=item["product_name"],
+                recommendations=[
+                    CrossSellRecommendation(
+                        product_id=rec["product_id"],
+                        product_name=rec["product_name"],
+                        frequency=rec["frequency"],
+                    )
+                    for rec in item["recommendations"]
+                ],
+            )
+            for item in data
+        ]
+        return CrossSellingResult(items=items)

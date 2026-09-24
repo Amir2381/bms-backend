@@ -84,3 +84,22 @@ class CustomerPerformance:
 @dataclass(frozen=True)
 class CustomerPerformanceResult:
     customers: list[CustomerPerformance]
+
+
+@dataclass(frozen=True)
+class CrossSellRecommendation:
+    product_id: int
+    product_name: str
+    frequency: int
+
+
+@dataclass(frozen=True)
+class ProductCrossSell:
+    product_id: int
+    product_name: str
+    recommendations: list[CrossSellRecommendation]
+
+
+@dataclass(frozen=True)
+class CrossSellingResult:
+    items: list[ProductCrossSell]

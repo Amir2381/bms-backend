@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from sqlalchemy import Date as SqlDate
 from sqlalchemy import Select, cast, func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, aliased, joinedload
 
 from app.models.category import Category
 from app.models.customer import Customer
@@ -471,3 +471,61 @@ def get_top_customers(
         }
         for row in rows
     ]
+
+
+def get_cross_selling_products(
+    db: Session,
+    limit_per_product: int = 3,
+    product_id: int | None = None,
+    user_id: int | None = None,
+) -> list[dict]:
+    si1 = aliased(SaleItem)
+    si2 = aliased(SaleItem)
+    p1 = aliased(Product)
+    p2 = aliased(Product)
+
+    stmt = (
+        Select(
+            si1.product_id.label("product_id"),
+            p1.name.label("product_name"),
+            si2.product_id.label("recommended_product_id"),
+            p2.name.label("recommended_product_name"),
+            func.count(si1.sale_id).label("frequency"),
+        )
+        .select_from(si1)
+        .join(si2, si1.sale_id == si2.sale_id)
+        .join(p1, si1.product_id == p1.id)
+        .join(p2, si2.product_id == p2.id)
+        .where(si1.product_id != si2.product_id)
+    )
+
+    if product_id is not None:
+        stmt = stmt.where(si1.product_id == product_id)
+    if user_id is not None:
+        stmt = stmt.join(Sale, Sale.id == si1.sale_id).where(Sale.user_id == user_id)
+
+    stmt = stmt.group_by(si1.product_id, p1.name, si2.product_id, p2.name).order_by(
+        si1.product_id, func.count(si1.sale_id).desc()
+    )
+
+    rows = db.execute(stmt).all()
+
+    results = {}
+    for row in rows:
+        pid = row.product_id
+        if pid not in results:
+            results[pid] = {
+                "product_id": pid,
+                "product_name": row.product_name,
+                "recommendations": [],
+            }
+        if len(results[pid]["recommendations"]) < limit_per_product:
+            results[pid]["recommendations"].append(
+                {
+                    "product_id": row.recommended_product_id,
+                    "product_name": row.recommended_product_name,
+                    "frequency": row.frequency,
+                }
+            )
+
+    return list(results.values())
