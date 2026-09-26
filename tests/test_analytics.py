@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.models.category import Category
 from app.models.product import Product
 from app.models.sales import Sale, SaleItem
+from app.models.branch import Branch
 from tests.database import TestingSessionLocal
 
 
@@ -34,7 +35,7 @@ def test_get_summary_metrics(client: TestClient):
     db.close()
 
     response = client.get("/analytics/metrics")
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Expected 200, got {response.text}"
 
     data = response.json()
     assert float(data["total_sales"]) == 260.0
@@ -70,7 +71,7 @@ def test_get_sales_trends(client: TestClient):
     db.close()
 
     response = client.get("/analytics/trends?period=daily")
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Expected 200, got {response.text}"
 
     data = response.json()
     assert "trends" in data
@@ -112,7 +113,7 @@ def test_get_product_performance(client: TestClient):
     db.close()
 
     response = client.get("/analytics/products/performance?limit=10")
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Expected 200, got {response.text}"
 
     data = response.json()
     assert "products" in data
@@ -155,7 +156,7 @@ def test_get_category_performance(client: TestClient):
     db.close()
 
     response = client.get("/analytics/categories/performance?limit=10")
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Expected 200, got {response.text}"
 
     data = response.json()
     assert "categories" in data
@@ -181,6 +182,8 @@ def test_analytics_date_filtering(client: TestClient):
     )
     db.add_all([sale_jan, sale_feb])
     db.commit()
+    db.refresh(sale_jan)
+    db.refresh(sale_feb)
 
     item_jan = SaleItem(
         sale_id=sale_jan.id, product_id=1, quantity=1, unit_price=Decimal("100.0")
@@ -195,9 +198,47 @@ def test_analytics_date_filtering(client: TestClient):
     response = client.get(
         "/analytics/metrics?start_date=2026-02-01&end_date=2026-02-28"
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Expected 200, got {response.text}"
 
     data = response.json()
     assert float(data["total_sales"]) == 400.0
     assert data["total_transactions"] == 1
     assert data["sold_products_count"] == 2
+
+
+def test_analytics_branch_filtering_for_admin(client: TestClient):
+    db = TestingSessionLocal()
+
+    branch2 = Branch(name="Branch 2", location="Remote Area")
+    db.add(branch2)
+    db.commit()
+    db.refresh(branch2)
+
+    # Store ID before any session closing issues
+    branch2_id = branch2.id
+
+    sale1 = Sale(user_id=1, branch_id=1)
+    sale2 = Sale(user_id=1, branch_id=branch2_id)
+    db.add_all([sale1, sale2])
+    db.commit()
+
+    db.refresh(sale1)
+    db.refresh(sale2)
+
+    item1 = SaleItem(
+        sale_id=sale1.id, product_id=1, quantity=2, unit_price=Decimal("50.0")
+    )
+    item2 = SaleItem(
+        sale_id=sale2.id, product_id=1, quantity=3, unit_price=Decimal("20.0")
+    )
+    db.add_all([item1, item2])
+    db.commit()
+    db.close()
+
+    response_all = client.get("/analytics/metrics")
+    assert response_all.status_code == 200, f"Expected 200, got {response_all.text}"
+    assert float(response_all.json()["total_sales"]) == 160.0
+
+    response_b2 = client.get(f"/analytics/metrics?branch_id={branch2_id}")
+    assert response_b2.status_code == 200, f"Expected 200, got {response_b2.text}"
+    assert float(response_b2.json()["total_sales"]) == 60.0

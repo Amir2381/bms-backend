@@ -41,10 +41,13 @@ def get_analytics_service(db: Session = Depends(get_db)) -> AnalyticsService:
 def get_summary_metrics(
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    return service.get_summary_metrics(current_user, start_date, end_date)
+    return service.get_summary_metrics(current_user, start_date, end_date, branch_id)
 
 
 @router.get("/trends", response_model=SalesTrendResponse)
@@ -52,10 +55,15 @@ def get_sales_trends(
     period: str = Query("daily", description="Time period for the trend"),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    trend_data = service.get_sales_trend(current_user, period, start_date, end_date)
+    trend_data = service.get_sales_trend(
+        current_user, period, start_date, end_date, branch_id
+    )
 
     return SalesTrendResponse(
         trends=[
@@ -74,13 +82,18 @@ def export_sales_trends(
     period: str = Query("daily", description="Time period for the trend"),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     export_format: str = Query(
         "csv", pattern="^(csv|excel)$", description="Export format"
     ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    trend_data = service.get_sales_trend(current_user, period, start_date, end_date)
+    trend_data = service.get_sales_trend(
+        current_user, period, start_date, end_date, branch_id
+    )
 
     def data_generator() -> Iterator[dict[str, Any]]:
         for point in trend_data.points:
@@ -101,11 +114,14 @@ def get_product_performance(
     limit: int = Query(10, description="Top N products", ge=1, le=100),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     performance_data = service.get_product_performance(
-        current_user, limit, start_date, end_date
+        current_user, limit, start_date, end_date, branch_id
     )
 
     return ProductPerformanceResponse(
@@ -127,6 +143,9 @@ def export_product_performance(
     limit: int = Query(100, description="Top N products", ge=1, le=10000),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     export_format: str = Query(
         "csv", pattern="^(csv|excel)$", description="Export format"
     ),
@@ -134,7 +153,7 @@ def export_product_performance(
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     performance_data = service.get_product_performance(
-        current_user, limit, start_date, end_date
+        current_user, limit, start_date, end_date, branch_id
     )
 
     def data_generator() -> Iterator[dict[str, Any]]:
@@ -164,11 +183,14 @@ def get_category_performance(
     limit: int = Query(10, description="Top N categories", ge=1, le=100),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     performance_data = service.get_category_performance(
-        current_user, limit, start_date, end_date
+        current_user, limit, start_date, end_date, branch_id
     )
 
     return CategoryPerformanceResponse(
@@ -190,6 +212,9 @@ def export_category_performance(
     limit: int = Query(100, description="Top N categories", ge=1, le=10000),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     export_format: str = Query(
         "csv", pattern="^(csv|excel)$", description="Export format"
     ),
@@ -197,7 +222,7 @@ def export_category_performance(
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     performance_data = service.get_category_performance(
-        current_user, limit, start_date, end_date
+        current_user, limit, start_date, end_date, branch_id
     )
 
     def data_generator() -> Iterator[dict[str, Any]]:
@@ -227,10 +252,15 @@ def get_salesperson_performance(
     limit: int = Query(10, description="Top N salespersons", ge=1, le=100),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     current_user: User = Depends(get_admin_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    performance_data = service.get_salesperson_performance(limit, start_date, end_date)
+    performance_data = service.get_salesperson_performance(
+        current_user, limit, start_date, end_date, branch_id
+    )
 
     return SalespersonPerformanceResponse(
         salespersons=[
@@ -251,11 +281,14 @@ def get_top_customers(
     limit: int = Query(10, description="Top N customers", ge=1, le=100),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     performance_data = service.get_top_customers(
-        current_user, limit, start_date, end_date
+        current_user, limit, start_date, end_date, branch_id
     )
 
     return CustomerPerformanceResponse(
@@ -278,6 +311,9 @@ def export_top_customers(
     limit: int = Query(100, description="Top N customers", ge=1, le=10000),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     export_format: str = Query(
         "csv", pattern="^(csv|excel)$", description="Export format"
     ),
@@ -285,7 +321,7 @@ def export_top_customers(
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     performance_data = service.get_top_customers(
-        current_user, limit, start_date, end_date
+        current_user, limit, start_date, end_date, branch_id
     )
 
     def data_generator() -> Iterator[dict[str, Any]]:
@@ -320,10 +356,15 @@ def get_cross_selling(
     limit_per_product: int = Query(
         3, description="Number of recommendations per product"
     ),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    result = service.get_cross_selling(current_user, product_id, limit_per_product)
+    result = service.get_cross_selling(
+        current_user, product_id, limit_per_product, branch_id
+    )
 
     return CrossSellingResponse(
         items=[
@@ -350,10 +391,15 @@ def get_inventory_alerts(
     lookback_days: int = Query(
         30, description="Lookback period in days for daily run rate calculation"
     ),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    result = service.get_inventory_alerts(current_user, days_threshold, lookback_days)
+    result = service.get_inventory_alerts(
+        current_user, days_threshold, lookback_days, branch_id
+    )
 
     return InventoryAlertResponse(
         alerts=[
@@ -374,10 +420,15 @@ def get_dashboard_data(
     period: str = Query("daily", description="Time period for the trend"),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
     current_user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service),
 ):
-    metrics_data = service.get_summary_metrics(current_user, start_date, end_date)
+    metrics_data = service.get_summary_metrics(
+        current_user, start_date, end_date, branch_id
+    )
     metrics_response = SummaryMetricsResponse(
         total_sales=metrics_data.total_sales,
         total_profit=metrics_data.total_profit,
@@ -391,7 +442,9 @@ def get_dashboard_data(
         average_clv=metrics_data.average_clv,
     )
 
-    trend_data = service.get_sales_trend(current_user, period, start_date, end_date)
+    trend_data = service.get_sales_trend(
+        current_user, period, start_date, end_date, branch_id
+    )
     trends_response = SalesTrendResponse(
         trends=[
             SalesTrendItem(
@@ -404,7 +457,11 @@ def get_dashboard_data(
     )
 
     product_data = service.get_product_performance(
-        current_user, limit=5, start_date=start_date, end_date=end_date
+        current_user,
+        limit=5,
+        start_date=start_date,
+        end_date=end_date,
+        branch_id=branch_id,
     )
     products_response = ProductPerformanceResponse(
         products=[

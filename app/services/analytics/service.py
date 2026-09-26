@@ -28,20 +28,23 @@ class AnalyticsService:
     def __init__(self, db: Session) -> None:
         self._db = db
 
-    def _get_target_branch_id(self, current_user: User) -> int | None:
+    def _get_target_branch_id(
+        self, current_user: User, requested_branch_id: int | None = None
+    ) -> int | None:
         if current_user.role == UserRole.SALESPERSON:
             return current_user.branch_id
-        return None
+        return requested_branch_id
 
     def get_summary_metrics(
         self,
         current_user: User,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
+        branch_id: int | None = None,
     ) -> SummaryMetrics:
-        branch_id = self._get_target_branch_id(current_user)
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
         data = sale_repository.get_summary_metrics(
-            self._db, start_date, end_date, branch_id
+            self._db, start_date, end_date, target_branch_id
         )
         return SummaryMetrics(
             total_sales=data["total_sales"],
@@ -62,10 +65,11 @@ class AnalyticsService:
         period: str,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
+        branch_id: int | None = None,
     ) -> SalesTrend:
-        branch_id = self._get_target_branch_id(current_user)
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
         data = sale_repository.get_sales_trend(
-            self._db, period, start_date, end_date, branch_id
+            self._db, period, start_date, end_date, target_branch_id
         )
         points = [
             SalesTrendPoint(
@@ -83,10 +87,11 @@ class AnalyticsService:
         limit: int = 10,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
+        branch_id: int | None = None,
     ) -> ProductPerformanceResult:
-        branch_id = self._get_target_branch_id(current_user)
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
         data = sale_repository.get_product_performance(
-            self._db, limit, start_date, end_date, branch_id
+            self._db, limit, start_date, end_date, target_branch_id
         )
         products = [
             ProductPerformance(
@@ -106,10 +111,11 @@ class AnalyticsService:
         limit: int = 10,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
+        branch_id: int | None = None,
     ) -> CategoryPerformanceResult:
-        branch_id = self._get_target_branch_id(current_user)
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
         data = sale_repository.get_category_performance(
-            self._db, limit, start_date, end_date, branch_id
+            self._db, limit, start_date, end_date, target_branch_id
         )
         categories = [
             CategoryPerformance(
@@ -125,12 +131,15 @@ class AnalyticsService:
 
     def get_salesperson_performance(
         self,
+        current_user: User,
         limit: int = 10,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
+        branch_id: int | None = None,
     ) -> SalespersonPerformanceResult:
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
         data = sale_repository.get_salesperson_performance(
-            self._db, limit, start_date, end_date
+            self._db, limit, start_date, end_date, target_branch_id
         )
         salespersons = [
             SalespersonPerformance(
@@ -150,10 +159,11 @@ class AnalyticsService:
         limit: int = 10,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
+        branch_id: int | None = None,
     ) -> CustomerPerformanceResult:
-        branch_id = self._get_target_branch_id(current_user)
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
         data = sale_repository.get_top_customers(
-            self._db, limit, start_date, end_date, branch_id
+            self._db, limit, start_date, end_date, target_branch_id
         )
         customers = [
             CustomerPerformance(
@@ -173,10 +183,11 @@ class AnalyticsService:
         current_user: User,
         product_id: int | None = None,
         limit_per_product: int = 3,
+        branch_id: int | None = None,
     ) -> CrossSellingResult:
-        branch_id = self._get_target_branch_id(current_user)
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
         data = sale_repository.get_cross_selling_products(
-            self._db, limit_per_product, product_id, branch_id
+            self._db, limit_per_product, product_id, target_branch_id
         )
 
         items = [
@@ -201,10 +212,11 @@ class AnalyticsService:
         current_user: User,
         days_threshold: int = 7,
         lookback_days: int = 30,
+        branch_id: int | None = None,
     ) -> InventoryAlertResult:
-        branch_id = self._get_target_branch_id(current_user)
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
         data = sale_repository.get_inventory_alerts(
-            self._db, days_threshold, lookback_days, branch_id
+            self._db, days_threshold, lookback_days, target_branch_id
         )
 
         alerts = [
