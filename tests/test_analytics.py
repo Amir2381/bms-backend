@@ -242,3 +242,43 @@ def test_analytics_branch_filtering_for_admin(client: TestClient):
     response_b2 = client.get(f"/analytics/metrics?branch_id={branch2_id}")
     assert response_b2.status_code == 200, f"Expected 200, got {response_b2.text}"
     assert float(response_b2.json()["total_sales"]) == 60.0
+
+
+def test_get_sales_visualizations(client: TestClient):
+    db = TestingSessionLocal()
+
+    category = Category(name="Electronics")
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+
+    product = Product(name="Smartphone", price=500.0, stock=10, category_id=category.id)
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+
+    sale = Sale(user_id=1, branch_id=1)
+    db.add(sale)
+    db.commit()
+    db.refresh(sale)
+
+    item = SaleItem(
+        sale_id=sale.id,
+        product_id=product.id,
+        quantity=2,
+        unit_price=Decimal("450.0"),
+    )
+    db.add(item)
+    db.commit()
+    db.close()
+
+    response = client.get("/analytics/visualizations/sales-distribution")
+    assert response.status_code == 200, f"Expected 200, got {response.text}"
+
+    data = response.json()
+    assert "sales_trend" in data
+    assert "category_distribution" in data
+
+    cat_dist = data["category_distribution"]
+    assert "Electronics" in cat_dist["labels"]
+    assert float(cat_dist["datasets"][0]["data"][0]) == 900.0

@@ -109,3 +109,18 @@ class DashboardResponse(BaseModel):
     metrics: SummaryMetricsResponse
     trends: SalesTrendResponse
     top_products: ProductPerformanceResponse
+
+
+class ChartDataset(BaseModel):
+    label: str
+    data: List[Decimal]
+
+
+class ChartResponse(BaseModel):
+    labels: List[str]
+    datasets: List[ChartDataset]
+
+
+class SalesVisualizationsResponse(BaseModel):
+    sales_trend: ChartResponse
+    category_distribution: ChartResponse

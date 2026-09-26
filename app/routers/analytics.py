@@ -26,6 +26,9 @@ from app.schemas.analytics import (
     SalesTrendItem,
     SalesTrendResponse,
     SummaryMetricsResponse,
+    ChartDataset,
+    ChartResponse,
+    SalesVisualizationsResponse,
 )
 from app.services.analytics.service import AnalyticsService
 from app.services.reporting.utils import stream_report_response
@@ -480,4 +483,51 @@ def get_dashboard_data(
         metrics=metrics_response,
         trends=trends_response,
         top_products=products_response,
+    )
+
+
+@router.get(
+    "/visualizations/sales-distribution", response_model=SalesVisualizationsResponse
+)
+def get_sales_visualizations(
+    start_date: date | None = Query(None, description="Start date for filtering"),
+    end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    trend_data = service.get_sales_trend(
+        current_user,
+        period="daily",
+        start_date=start_date,
+        end_date=end_date,
+        branch_id=branch_id,
+    )
+    trend_labels = [point.period.isoformat() for point in trend_data.points]
+    trend_revenue = [point.revenue for point in trend_data.points]
+
+    trend_chart = ChartResponse(
+        labels=trend_labels,
+        datasets=[ChartDataset(label="Revenue", data=trend_revenue)],
+    )
+
+    category_data = service.get_category_performance(
+        current_user,
+        limit=10,
+        start_date=start_date,
+        end_date=end_date,
+        branch_id=branch_id,
+    )
+    cat_labels = [c.category_name for c in category_data.categories]
+    cat_revenue = [c.revenue for c in category_data.categories]
+
+    cat_chart = ChartResponse(
+        labels=cat_labels,
+        datasets=[ChartDataset(label="Revenue by Category", data=cat_revenue)],
+    )
+
+    return SalesVisualizationsResponse(
+        sales_trend=trend_chart, category_distribution=cat_chart
     )
