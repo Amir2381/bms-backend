@@ -1,10 +1,11 @@
 from datetime import date
 from typing import Any, Iterator
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_admin_user
+from app.core.rate_limit import limiter
 from app.core.security import get_current_user
 from app.db.database import get_db
 from app.models.user import User
@@ -44,7 +45,9 @@ def get_analytics_service(db: Session = Depends(get_db)) -> AnalyticsService:
 
 
 @router.get("/metrics", response_model=SummaryMetricsResponse)
+@limiter.limit("20/minute")
 def get_summary_metrics(
+    request: Request,
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     branch_id: int | None = Query(
@@ -57,7 +60,9 @@ def get_summary_metrics(
 
 
 @router.get("/trends", response_model=SalesTrendResponse)
+@limiter.limit("20/minute")
 def get_sales_trends(
+    request: Request,
     period: str = Query("daily", description="Time period for the trend"),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
@@ -84,7 +89,9 @@ def get_sales_trends(
 
 
 @router.get("/trends/export")
+@limiter.limit("20/minute")
 def export_sales_trends(
+    request: Request,
     period: str = Query("daily", description="Time period for the trend"),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
@@ -116,7 +123,9 @@ def export_sales_trends(
 
 
 @router.get("/products/performance", response_model=ProductPerformanceResponse)
+@limiter.limit("20/minute")
 def get_product_performance(
+    request: Request,
     limit: int = Query(10, description="Top N products", ge=1, le=100),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
@@ -145,7 +154,9 @@ def get_product_performance(
 
 
 @router.get("/products/performance/export")
+@limiter.limit("20/minute")
 def export_product_performance(
+    request: Request,
     limit: int = Query(100, description="Top N products", ge=1, le=10000),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
@@ -185,7 +196,9 @@ def export_product_performance(
 
 
 @router.get("/categories/performance", response_model=CategoryPerformanceResponse)
+@limiter.limit("20/minute")
 def get_category_performance(
+    request: Request,
     limit: int = Query(10, description="Top N categories", ge=1, le=100),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
@@ -214,7 +227,9 @@ def get_category_performance(
 
 
 @router.get("/categories/performance/export")
+@limiter.limit("20/minute")
 def export_category_performance(
+    request: Request,
     limit: int = Query(100, description="Top N categories", ge=1, le=10000),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
@@ -254,7 +269,9 @@ def export_category_performance(
 
 
 @router.get("/salespersons/performance", response_model=SalespersonPerformanceResponse)
+@limiter.limit("20/minute")
 def get_salesperson_performance(
+    request: Request,
     limit: int = Query(10, description="Top N salespersons", ge=1, le=100),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
@@ -283,7 +300,9 @@ def get_salesperson_performance(
 
 
 @router.get("/customers/top", response_model=CustomerPerformanceResponse)
+@limiter.limit("20/minute")
 def get_top_customers(
+    request: Request,
     limit: int = Query(10, description="Top N customers", ge=1, le=100),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
@@ -313,7 +332,9 @@ def get_top_customers(
 
 
 @router.get("/customers/top/export")
+@limiter.limit("20/minute")
 def export_top_customers(
+    request: Request,
     limit: int = Query(100, description="Top N customers", ge=1, le=10000),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
@@ -355,7 +376,9 @@ def export_top_customers(
 
 
 @router.get("/cross-selling", response_model=CrossSellingResponse)
+@limiter.limit("20/minute")
 def get_cross_selling(
+    request: Request,
     product_id: int | None = Query(
         None, description="Filter recommendations for a specific product"
     ),
@@ -392,7 +415,9 @@ def get_cross_selling(
 
 
 @router.get("/inventory-alerts", response_model=InventoryAlertResponse)
+@limiter.limit("20/minute")
 def get_inventory_alerts(
+    request: Request,
     days_threshold: int = Query(7, description="Threshold in days to trigger an alert"),
     lookback_days: int = Query(
         30, description="Lookback period in days for daily run rate calculation"
@@ -422,7 +447,9 @@ def get_inventory_alerts(
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
+@limiter.limit("20/minute")
 def get_dashboard_data(
+    request: Request,
     period: str = Query("daily", description="Time period for the trend"),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
@@ -490,7 +517,9 @@ def get_dashboard_data(
 
 
 @router.get("/dashboard/export")
+@limiter.limit("20/minute")
 def export_dashboard(
+    request: Request,
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     branch_id: int | None = Query(
@@ -577,7 +606,9 @@ def export_dashboard(
 @router.get(
     "/visualizations/sales-distribution", response_model=SalesVisualizationsResponse
 )
+@limiter.limit("20/minute")
 def get_sales_visualizations(
+    request: Request,
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     branch_id: int | None = Query(
