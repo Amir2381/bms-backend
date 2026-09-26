@@ -2,6 +2,7 @@ from io import BytesIO
 
 from tests.database import TestingSessionLocal
 from app.models.sales import Sale, SaleItem
+from app.models.audit_log import AuditLog
 
 
 def test_upload_csv_file(client):
@@ -128,5 +129,50 @@ def test_import_sales_with_category_creates_and_links_category(client):
         product = db.query(Product).filter_by(name="Test Product").first()
         assert product is not None
         assert product.category_id == category.id
+    finally:
+        db.close()
+
+
+def test_import_sales_endpoint_creates_sale_in_database(client):
+    csv_content = (
+        "date,product,quantity,unit_price\n" "2026-09-12,Test Product,2,75.50\n"
+    )
+
+    response = client.post(
+        "/import/sales",
+        files={
+            "file": (
+                "sales.csv",
+                csv_content,
+                "text/csv",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["message"] == "Sales imported successfully."
+    assert data["filename"] == "sales.csv"
+    assert data["imported_rows"] == 1
+
+    db = TestingSessionLocal()
+
+    try:
+        sale = db.query(Sale).first()
+        sale_item = db.query(SaleItem).first()
+
+        assert sale is not None
+        assert sale.user_id == 1
+
+        assert sale_item is not None
+        assert sale_item.quantity == 2
+        assert float(sale_item.unit_price) == 75.50
+
+        audit_log = db.query(AuditLog).filter(AuditLog.action == "IMPORT_SALES").first()
+        assert audit_log is not None
+        assert audit_log.details["imported_rows"] == 1
+
     finally:
         db.close()

@@ -11,6 +11,7 @@ from app.models.sales import Sale, SaleItem
 from app.models.user import User
 from app.models.branch import Branch
 from app.models.customer import Customer
+from app.models.audit_log import AuditLog
 
 config = context.config
 

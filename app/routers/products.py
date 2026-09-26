@@ -6,6 +6,7 @@ from app.core.security import get_current_user
 from app.db.database import get_db
 from app.models.product import Product
 from app.models.user import User
+from app.models.audit_log import AuditLog
 from app.repositories import product_repository
 from app.schemas.pagination import PaginatedResponse
 from app.schemas.product import ProductCreate, ProductResponse
@@ -83,10 +84,22 @@ def update_product(
     current_user: User = Depends(get_current_user),
 ):
     db_product = get_product_or_404(product_id, db)
+    old_price = db_product.price
+
     db_product.name = product.name
     db_product.price = product.price
     db_product.stock = product.stock
     db_product.category_id = product.category_id
+
+    if old_price != product.price:
+        audit_log = AuditLog(
+            user_id=current_user.id,
+            action="UPDATE_PRODUCT_PRICE",
+            entity_type="Product",
+            entity_id=str(product_id),
+            details={"old_price": old_price, "new_price": product.price},
+        )
+        db.add(audit_log)
 
     return product_repository.update_product(db, db_product)
 

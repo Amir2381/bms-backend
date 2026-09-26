@@ -4,6 +4,7 @@ from app.models.category import Category
 from app.models.customer import Customer
 from app.models.sales import Sale, SaleItem
 from app.models.user import User
+from app.models.audit_log import AuditLog
 from app.repositories import (
     category_repository,
     customer_repository,
@@ -115,6 +116,17 @@ class ImportSaleService:
                 sales.append(sale)
 
             db.commit()
+
+            if sales:
+                audit_log = AuditLog(
+                    user_id=current_user.id,
+                    action="IMPORT_SALES",
+                    entity_type="SaleBatch",
+                    entity_id=None,
+                    details={"imported_rows": len(sales)},
+                )
+                db.add(audit_log)
+                db.commit()
 
         except Exception:
             db.rollback()
