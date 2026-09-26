@@ -35,8 +35,11 @@ def get_product_or_404(product_id: int, db: Session):
     return product
 
 
-def get_sale_or_404(sale_id: int, db: Session):
-    sale = sale_repository.get_sale(db, sale_id)
+def get_sale_or_404(sale_id: int, db: Session, current_user: User):
+    branch_id = (
+        current_user.branch_id if current_user.role == UserRole.SALESPERSON else None
+    )
+    sale = sale_repository.get_sale(db, sale_id, branch_id=branch_id)
 
     if sale is None:
         raise HTTPException(

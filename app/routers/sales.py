@@ -7,7 +7,7 @@ from app.core.dependencies import (
 from app.services import sale_service
 from app.core.security import get_current_user
 from app.db.database import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.repositories import sale_repository
 from app.schemas.sale import SaleCreate, SaleResponse
 from app.services.exceptions import (
@@ -43,7 +43,10 @@ def get_all_sales(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return sale_repository.get_all_sales(db)
+    branch_id = (
+        current_user.branch_id if current_user.role == UserRole.SALESPERSON else None
+    )
+    return sale_repository.get_all_sales(db, branch_id=branch_id)
 
 
 @router.get("/{sale_id}", response_model=SaleResponse)
@@ -52,7 +55,7 @@ def get_sale(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_sale_or_404(sale_id, db)
+    return get_sale_or_404(sale_id, db, current_user)
 
 
 @router.delete("/{sale_id}")
@@ -61,7 +64,7 @@ def delete_sale(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    sale = get_sale_or_404(sale_id, db)
+    sale = get_sale_or_404(sale_id, db, current_user)
     sale_repository.delete_sale(db, sale)
 
     return {

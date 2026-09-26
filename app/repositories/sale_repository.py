@@ -19,7 +19,7 @@ def create_sale(db: Session, sale: Sale) -> Sale:
     return sale
 
 
-def get_sale(db: Session, sale_id: int, user_id: int | None = None) -> Sale | None:
+def get_sale(db: Session, sale_id: int, branch_id: int | None = None) -> Sale | None:
     stmt = (
         Select(Sale)
         .options(
@@ -28,18 +28,18 @@ def get_sale(db: Session, sale_id: int, user_id: int | None = None) -> Sale | No
         )
         .where(Sale.id == sale_id)
     )
-    if user_id is not None:
-        stmt = stmt.where(Sale.user_id == user_id)
+    if branch_id is not None:
+        stmt = stmt.where(Sale.branch_id == branch_id)
     return db.scalars(stmt).first()
 
 
-def get_all_sales(db: Session, user_id: int | None = None) -> list[Sale]:
+def get_all_sales(db: Session, branch_id: int | None = None) -> list[Sale]:
     stmt = Select(Sale).options(
         joinedload(Sale.user),
         joinedload(Sale.items).joinedload(SaleItem.product),
     )
-    if user_id is not None:
-        stmt = stmt.where(Sale.user_id == user_id)
+    if branch_id is not None:
+        stmt = stmt.where(Sale.branch_id == branch_id)
     return list(db.scalars(stmt).unique().all())
 
 
@@ -58,7 +58,7 @@ def get_summary_metrics(
     db: Session,
     start_date: datetime.date | None = None,
     end_date: datetime.date | None = None,
-    user_id: int | None = None,
+    branch_id: int | None = None,
 ) -> dict:
     sale_totals_stmt = Select(
         SaleItem.sale_id,
@@ -66,7 +66,7 @@ def get_summary_metrics(
         func.sum(SaleItem.quantity * SaleItem.cost_price).label("cost_total"),
     ).select_from(SaleItem)
 
-    if start_date or end_date or user_id is not None:
+    if start_date or end_date or branch_id is not None:
         sale_totals_stmt = sale_totals_stmt.join(Sale, Sale.id == SaleItem.sale_id)
         if start_date:
             sale_totals_stmt = sale_totals_stmt.where(
@@ -76,8 +76,8 @@ def get_summary_metrics(
             sale_totals_stmt = sale_totals_stmt.where(
                 cast(Sale.sale_date, SqlDate) <= end_date
             )
-        if user_id is not None:
-            sale_totals_stmt = sale_totals_stmt.where(Sale.user_id == user_id)
+        if branch_id is not None:
+            sale_totals_stmt = sale_totals_stmt.where(Sale.branch_id == branch_id)
 
     sale_totals_subq = sale_totals_stmt.group_by(SaleItem.sale_id).subquery()
 
@@ -92,7 +92,7 @@ def get_summary_metrics(
     metrics_row = db.execute(metrics_stmt).first()
 
     sold_products_stmt = Select(func.sum(SaleItem.quantity)).select_from(SaleItem)
-    if start_date or end_date or user_id is not None:
+    if start_date or end_date or branch_id is not None:
         sold_products_stmt = sold_products_stmt.join(Sale, Sale.id == SaleItem.sale_id)
         if start_date:
             sold_products_stmt = sold_products_stmt.where(
@@ -102,8 +102,8 @@ def get_summary_metrics(
             sold_products_stmt = sold_products_stmt.where(
                 cast(Sale.sale_date, SqlDate) <= end_date
             )
-        if user_id is not None:
-            sold_products_stmt = sold_products_stmt.where(Sale.user_id == user_id)
+        if branch_id is not None:
+            sold_products_stmt = sold_products_stmt.where(Sale.branch_id == branch_id)
 
     sold_products_count = db.scalar(sold_products_stmt) or 0
 
@@ -114,8 +114,8 @@ def get_summary_metrics(
         days_stmt = days_stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
     if end_date:
         days_stmt = days_stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
-    if user_id is not None:
-        days_stmt = days_stmt.where(Sale.user_id == user_id)
+    if branch_id is not None:
+        days_stmt = days_stmt.where(Sale.branch_id == branch_id)
 
     unique_days = db.scalar(days_stmt) or 1
 
@@ -132,8 +132,8 @@ def get_summary_metrics(
         unique_customers_stmt = unique_customers_stmt.where(
             cast(Sale.sale_date, SqlDate) <= end_date
         )
-    if user_id is not None:
-        unique_customers_stmt = unique_customers_stmt.where(Sale.user_id == user_id)
+    if branch_id is not None:
+        unique_customers_stmt = unique_customers_stmt.where(Sale.branch_id == branch_id)
 
     unique_customers = db.scalar(unique_customers_stmt) or 0
 
@@ -202,7 +202,7 @@ def get_sales_trend(
     period: str = "daily",
     start_date: datetime.date | None = None,
     end_date: datetime.date | None = None,
-    user_id: int | None = None,
+    branch_id: int | None = None,
 ) -> list[dict]:
     stmt = (
         Select(
@@ -218,8 +218,8 @@ def get_sales_trend(
         stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
     if end_date:
         stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
-    if user_id is not None:
-        stmt = stmt.where(Sale.user_id == user_id)
+    if branch_id is not None:
+        stmt = stmt.where(Sale.branch_id == branch_id)
 
     stmt = stmt.group_by(cast(Sale.sale_date, SqlDate)).order_by(
         cast(Sale.sale_date, SqlDate)
@@ -242,13 +242,13 @@ def get_product_performance(
     limit: int = 10,
     start_date: datetime.date | None = None,
     end_date: datetime.date | None = None,
-    user_id: int | None = None,
+    branch_id: int | None = None,
 ) -> list[dict]:
     total_revenue_stmt = Select(
         func.sum(SaleItem.quantity * SaleItem.unit_price)
     ).select_from(SaleItem)
 
-    if start_date or end_date or user_id is not None:
+    if start_date or end_date or branch_id is not None:
         total_revenue_stmt = total_revenue_stmt.join(Sale, Sale.id == SaleItem.sale_id)
         if start_date:
             total_revenue_stmt = total_revenue_stmt.where(
@@ -258,8 +258,8 @@ def get_product_performance(
             total_revenue_stmt = total_revenue_stmt.where(
                 cast(Sale.sale_date, SqlDate) <= end_date
             )
-        if user_id is not None:
-            total_revenue_stmt = total_revenue_stmt.where(Sale.user_id == user_id)
+        if branch_id is not None:
+            total_revenue_stmt = total_revenue_stmt.where(Sale.branch_id == branch_id)
 
     total_revenue = db.scalar(total_revenue_stmt) or Decimal("0.0")
 
@@ -274,14 +274,14 @@ def get_product_performance(
         .join(Product, Product.id == SaleItem.product_id)
     )
 
-    if start_date or end_date or user_id is not None:
+    if start_date or end_date or branch_id is not None:
         stmt = stmt.join(Sale, Sale.id == SaleItem.sale_id)
         if start_date:
             stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
         if end_date:
             stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
-        if user_id is not None:
-            stmt = stmt.where(Sale.user_id == user_id)
+        if branch_id is not None:
+            stmt = stmt.where(Sale.branch_id == branch_id)
 
     stmt = (
         stmt.group_by(Product.id, Product.name)
@@ -312,13 +312,13 @@ def get_category_performance(
     limit: int = 10,
     start_date: datetime.date | None = None,
     end_date: datetime.date | None = None,
-    user_id: int | None = None,
+    branch_id: int | None = None,
 ) -> list[dict]:
     total_revenue_stmt = Select(
         func.sum(SaleItem.quantity * SaleItem.unit_price)
     ).select_from(SaleItem)
 
-    if start_date or end_date or user_id is not None:
+    if start_date or end_date or branch_id is not None:
         total_revenue_stmt = total_revenue_stmt.join(Sale, Sale.id == SaleItem.sale_id)
         if start_date:
             total_revenue_stmt = total_revenue_stmt.where(
@@ -328,8 +328,8 @@ def get_category_performance(
             total_revenue_stmt = total_revenue_stmt.where(
                 cast(Sale.sale_date, SqlDate) <= end_date
             )
-        if user_id is not None:
-            total_revenue_stmt = total_revenue_stmt.where(Sale.user_id == user_id)
+        if branch_id is not None:
+            total_revenue_stmt = total_revenue_stmt.where(Sale.branch_id == branch_id)
 
     total_revenue = db.scalar(total_revenue_stmt) or Decimal("0.0")
 
@@ -345,14 +345,14 @@ def get_category_performance(
         .outerjoin(Category, Category.id == Product.category_id)
     )
 
-    if start_date or end_date or user_id is not None:
+    if start_date or end_date or branch_id is not None:
         stmt = stmt.join(Sale, Sale.id == SaleItem.sale_id)
         if start_date:
             stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
         if end_date:
             stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
-        if user_id is not None:
-            stmt = stmt.where(Sale.user_id == user_id)
+        if branch_id is not None:
+            stmt = stmt.where(Sale.branch_id == branch_id)
 
     stmt = (
         stmt.group_by(Category.id, Category.name)
@@ -383,6 +383,7 @@ def get_salesperson_performance(
     limit: int = 10,
     start_date: datetime.date | None = None,
     end_date: datetime.date | None = None,
+    branch_id: int | None = None,
 ) -> list[dict]:
     stmt = (
         Select(
@@ -401,6 +402,8 @@ def get_salesperson_performance(
         stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
     if end_date:
         stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
+    if branch_id is not None:
+        stmt = stmt.where(Sale.branch_id == branch_id)
 
     stmt = (
         stmt.group_by(User.id, User.full_name)
@@ -427,7 +430,7 @@ def get_top_customers(
     limit: int = 10,
     start_date: datetime.date | None = None,
     end_date: datetime.date | None = None,
-    user_id: int | None = None,
+    branch_id: int | None = None,
 ) -> list[dict]:
     profit_expression = SaleItem.quantity * (SaleItem.unit_price - SaleItem.cost_price)
 
@@ -449,8 +452,8 @@ def get_top_customers(
         stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
     if end_date:
         stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
-    if user_id is not None:
-        stmt = stmt.where(Sale.user_id == user_id)
+    if branch_id is not None:
+        stmt = stmt.where(Sale.branch_id == branch_id)
 
     stmt = (
         stmt.group_by(Customer.id, Customer.full_name, Customer.phone)
@@ -477,7 +480,7 @@ def get_cross_selling_products(
     db: Session,
     limit_per_product: int = 3,
     product_id: int | None = None,
-    user_id: int | None = None,
+    branch_id: int | None = None,
 ) -> list[dict]:
     si1 = aliased(SaleItem)
     si2 = aliased(SaleItem)
@@ -501,8 +504,10 @@ def get_cross_selling_products(
 
     if product_id is not None:
         stmt = stmt.where(si1.product_id == product_id)
-    if user_id is not None:
-        stmt = stmt.join(Sale, Sale.id == si1.sale_id).where(Sale.user_id == user_id)
+    if branch_id is not None:
+        stmt = stmt.join(Sale, Sale.id == si1.sale_id).where(
+            Sale.branch_id == branch_id
+        )
 
     stmt = stmt.group_by(si1.product_id, p1.name, si2.product_id, p2.name).order_by(
         si1.product_id, func.count(si1.sale_id).desc()
@@ -535,7 +540,7 @@ def get_inventory_alerts(
     db: Session,
     days_threshold: int = 7,
     lookback_days: int = 30,
-    user_id: int | None = None,
+    branch_id: int | None = None,
 ) -> list[dict]:
     lookback_date = datetime.datetime.now(
         datetime.timezone.utc
@@ -547,8 +552,8 @@ def get_inventory_alerts(
         .where(cast(Sale.sale_date, SqlDate) >= lookback_date)
     )
 
-    if user_id is not None:
-        sales_subq_stmt = sales_subq_stmt.where(Sale.user_id == user_id)
+    if branch_id is not None:
+        sales_subq_stmt = sales_subq_stmt.where(Sale.branch_id == branch_id)
 
     sales_subq = sales_subq_stmt.group_by(SaleItem.product_id).subquery()
 
