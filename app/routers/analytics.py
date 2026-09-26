@@ -31,7 +31,10 @@ from app.schemas.analytics import (
     SalesVisualizationsResponse,
 )
 from app.services.analytics.service import AnalyticsService
-from app.services.reporting.utils import stream_report_response
+from app.services.reporting.utils import (
+    stream_report_response,
+    stream_multi_sheet_excel_response,
+)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -484,6 +487,91 @@ def get_dashboard_data(
         trends=trends_response,
         top_products=products_response,
     )
+
+
+@router.get("/dashboard/export")
+def export_dashboard(
+    start_date: date | None = Query(None, description="Start date for filtering"),
+    end_date: date | None = Query(None, description="End date for filtering"),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    metrics_data = service.get_summary_metrics(
+        current_user, start_date, end_date, branch_id
+    )
+    metrics_dict = {
+        "Total Sales": str(metrics_data.total_sales),
+        "Total Profit": str(metrics_data.total_profit),
+        "Profit Margin (%)": str(metrics_data.profit_margin),
+        "Total Transactions": metrics_data.total_transactions,
+        "Average Order Value": str(metrics_data.average_order_value),
+        "Highest Sale": (
+            str(metrics_data.highest_sale) if metrics_data.highest_sale else "N/A"
+        ),
+        "Lowest Sale": (
+            str(metrics_data.lowest_sale) if metrics_data.lowest_sale else "N/A"
+        ),
+        "Average Daily Sales": str(metrics_data.average_daily_sales),
+        "Sold Products Count": metrics_data.sold_products_count,
+        "Average CLV": str(metrics_data.average_clv),
+    }
+    metrics_sheet = {
+        "headers": ["Metric", "Value"],
+        "data": [{"Metric": k, "Value": v} for k, v in metrics_dict.items()],
+    }
+
+    trend_data = service.get_sales_trend(
+        current_user, "daily", start_date, end_date, branch_id
+    )
+    trends_sheet = {
+        "headers": ["Period", "Revenue", "Transaction Count"],
+        "data": [
+            {
+                "Period": point.period.isoformat(),
+                "Revenue": str(point.revenue),
+                "Transaction Count": point.transaction_count,
+            }
+            for point in trend_data.points
+        ],
+    }
+
+    product_data = service.get_product_performance(
+        current_user,
+        limit=10,
+        start_date=start_date,
+        end_date=end_date,
+        branch_id=branch_id,
+    )
+    products_sheet = {
+        "headers": [
+            "Product ID",
+            "Product Name",
+            "Quantity Sold",
+            "Revenue",
+            "Revenue Share (%)",
+        ],
+        "data": [
+            {
+                "Product ID": p.product_id,
+                "Product Name": p.product_name,
+                "Quantity Sold": p.quantity_sold,
+                "Revenue": str(p.revenue),
+                "Revenue Share (%)": str(p.revenue_share),
+            }
+            for p in product_data.products
+        ],
+    }
+
+    sheets_data = {
+        "Dashboard Metrics": metrics_sheet,
+        "Sales Trends": trends_sheet,
+        "Top Products": products_sheet,
+    }
+
+    return stream_multi_sheet_excel_response(sheets_data, "dashboard_report")
 
 
 @router.get(

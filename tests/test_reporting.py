@@ -4,7 +4,10 @@ from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 
 from app.services.reporting.csv_strategy import CsvReportStrategy
-from app.services.reporting.excel_strategy import ExcelReportStrategy
+from app.services.reporting.excel_strategy import (
+    ExcelReportStrategy,
+    MultiSheetExcelReportStrategy,
+)
 from app.services.reporting.generator import ReportGenerator
 
 
@@ -37,6 +40,30 @@ def test_excel_strategy_generation():
     assert rows[0] == ("id", "name")
     assert rows[1] == (1, "Amir")
     assert rows[2] == (2, "Reza")
+
+
+def test_multi_sheet_excel_strategy_generation():
+    strategy = MultiSheetExcelReportStrategy()
+    sheets_data = {
+        "Sheet1": {"headers": ["id", "name"], "data": [{"id": 1, "name": "Amir"}]},
+        "Sheet2": {"headers": ["value"], "data": [{"value": 100}]},
+    }
+
+    result_bytes = b"".join(list(strategy.generate_multi_sheet(sheets_data)))
+    workbook = load_workbook(filename=io.BytesIO(result_bytes))
+
+    assert "Sheet1" in workbook.sheetnames
+    assert "Sheet2" in workbook.sheetnames
+
+    ws1 = workbook["Sheet1"]
+    rows1 = list(ws1.iter_rows(values_only=True))
+    assert rows1[0] == ("id", "name")
+    assert rows1[1] == (1, "Amir")
+
+    ws2 = workbook["Sheet2"]
+    rows2 = list(ws2.iter_rows(values_only=True))
+    assert rows2[0] == ("value",)
+    assert rows2[1] == (100,)
 
 
 def test_export_analytics_endpoints_csv(client: TestClient):
@@ -83,4 +110,17 @@ def test_export_analytics_endpoints_excel(client: TestClient):
     assert (
         "attachment; filename=sales_trends.xlsx"
         in response_trends.headers["content-disposition"]
+    )
+
+
+def test_export_dashboard_excel(client: TestClient):
+    response = client.get("/analytics/dashboard/export")
+    assert response.status_code == 200
+    assert (
+        response.headers["content-type"]
+        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert (
+        "attachment; filename=dashboard_report.xlsx"
+        in response.headers["content-disposition"]
     )
