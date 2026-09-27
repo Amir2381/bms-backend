@@ -117,3 +117,19 @@ class InventoryAlert:
 @dataclass(frozen=True)
 class InventoryAlertResult:
     alerts: list[InventoryAlert]
+
+
+@dataclass(frozen=True)
+class RFMCustomer:
+    customer_id: int
+    customer_name: str
+    customer_phone: str
+    recency_days: int
+    frequency: int
+    monetary: Decimal
+    segment: str
+
+
+@dataclass(frozen=True)
+class RFMSegmentationResult:
+    customers: list[RFMCustomer]

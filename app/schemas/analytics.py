@@ -124,3 +124,17 @@ class ChartResponse(BaseModel):
 class SalesVisualizationsResponse(BaseModel):
     sales_trend: ChartResponse
     category_distribution: ChartResponse
+
+
+class RFMCustomerItem(BaseModel):
+    customer_id: int
+    customer_name: str
+    customer_phone: str
+    recency_days: int
+    frequency: int
+    monetary: Decimal
+    segment: str
+
+
+class RFMSegmentationResponse(BaseModel):
+    customers: List[RFMCustomerItem]

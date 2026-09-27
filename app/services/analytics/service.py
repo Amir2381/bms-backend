@@ -23,6 +23,8 @@ from app.services.analytics.types import (
     SummaryMetrics,
 )
 
+from app.services.analytics.types import RFMCustomer, RFMSegmentationResult
+
 
 class AnalyticsService:
     def __init__(self, db: Session) -> None:
@@ -230,3 +232,42 @@ class AnalyticsService:
             for item in data
         ]
         return InventoryAlertResult(alerts=alerts)
+
+    def get_rfm_segmentation(
+        self,
+        current_user: User,
+        limit: int = 100,
+        branch_id: int | None = None,
+    ) -> RFMSegmentationResult:
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
+        data = sale_repository.get_rfm_data(self._db, limit, target_branch_id)
+
+        customers = []
+        for item in data:
+            r = item["recency_days"]
+            f = item["frequency"]
+            m = item["monetary"]
+
+            segment = "Regular"
+            if r <= 30 and f >= 5 and m >= 1000:
+                segment = "VIP"
+            elif r <= 60 and f >= 3:
+                segment = "Loyal"
+            elif r > 90 and f < 2:
+                segment = "At Risk"
+            elif r > 60:
+                segment = "Needs Attention"
+
+            customers.append(
+                RFMCustomer(
+                    customer_id=item["customer_id"],
+                    customer_name=item["customer_name"],
+                    customer_phone=item["customer_phone"],
+                    recency_days=r,
+                    frequency=f,
+                    monetary=m,
+                    segment=segment,
+                )
+            )
+
+        return RFMSegmentationResult(customers=customers)

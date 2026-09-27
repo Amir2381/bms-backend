@@ -282,3 +282,51 @@ def test_get_sales_visualizations(client: TestClient):
     cat_dist = data["category_distribution"]
     assert "Electronics" in cat_dist["labels"]
     assert float(cat_dist["datasets"][0]["data"][0]) == 900.0
+
+
+def test_get_rfm_segmentation(client: TestClient):
+    db = TestingSessionLocal()
+
+    from app.models.customer import Customer
+    from app.models.sales import Sale, SaleItem
+    from decimal import Decimal
+
+    try:
+        customer = Customer(phone="09123456789", full_name="RFM Test")
+        db.add(customer)
+        db.commit()
+        db.refresh(customer)
+
+        customer_id = customer.id
+
+        sale = Sale(user_id=1, branch_id=1, customer_id=customer_id)
+        db.add(sale)
+        db.commit()
+        db.refresh(sale)
+
+        item = SaleItem(
+            sale_id=sale.id, product_id=1, quantity=10, unit_price=Decimal("150.0")
+        )
+        db.add(item)
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get("/analytics/customers/rfm")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "customers" in data
+    assert len(data["customers"]) >= 1
+
+    target = next(c for c in data["customers"] if c["customer_id"] == customer_id)
+    assert target["customer_name"] == "RFM Test"
+    assert target["frequency"] == 1
+    assert float(target["monetary"]) == 1500.0
+    assert target["segment"] in [
+        "Regular",
+        "VIP",
+        "Loyal",
+        "At Risk",
+        "Needs Attention",
+    ]

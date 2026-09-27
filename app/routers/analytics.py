@@ -37,6 +37,8 @@ from app.services.reporting.utils import (
     stream_multi_sheet_excel_response,
 )
 
+from app.schemas.analytics import RFMCustomerItem, RFMSegmentationResponse
+
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
@@ -649,4 +651,33 @@ def get_sales_visualizations(
 
     return SalesVisualizationsResponse(
         sales_trend=trend_chart, category_distribution=cat_chart
+    )
+
+
+@router.get("/customers/rfm", response_model=RFMSegmentationResponse)
+@limiter.limit("20/minute")
+def get_rfm_segmentation(
+    request: Request,
+    limit: int = Query(100, description="Top N customers to segment", ge=1, le=1000),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    result = service.get_rfm_segmentation(current_user, limit, branch_id)
+
+    return RFMSegmentationResponse(
+        customers=[
+            RFMCustomerItem(
+                customer_id=c.customer_id,
+                customer_name=c.customer_name,
+                customer_phone=c.customer_phone,
+                recency_days=c.recency_days,
+                frequency=c.frequency,
+                monetary=c.monetary,
+                segment=c.segment,
+            )
+            for c in result.customers
+        ]
     )

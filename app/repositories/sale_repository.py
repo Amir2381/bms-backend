@@ -595,3 +595,55 @@ def get_inventory_alerts(
         }
         for row in rows
     ]
+
+
+def get_rfm_data(
+    db: Session,
+    limit: int = 100,
+    branch_id: int | None = None,
+) -> list[dict]:
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    stmt = (
+        Select(
+            Customer.id.label("customer_id"),
+            Customer.full_name.label("customer_name"),
+            Customer.phone.label("customer_phone"),
+            func.max(Sale.sale_date).label("last_purchase_date"),
+            func.count(func.distinct(Sale.id)).label("frequency"),
+            func.sum(SaleItem.quantity * SaleItem.unit_price).label("monetary"),
+        )
+        .select_from(Customer)
+        .join(Sale, Sale.customer_id == Customer.id)
+        .join(SaleItem, Sale.id == SaleItem.sale_id)
+    )
+
+    if branch_id is not None:
+        stmt = stmt.where(Sale.branch_id == branch_id)
+
+    stmt = stmt.group_by(Customer.id, Customer.full_name, Customer.phone).limit(limit)
+
+    rows = db.execute(stmt).all()
+
+    results = []
+    for row in rows:
+        last_purchase = row.last_purchase_date
+        recency_days = 0
+
+        if last_purchase:
+            if last_purchase.tzinfo is None:
+                last_purchase = last_purchase.replace(tzinfo=datetime.timezone.utc)
+            recency_days = (now - last_purchase).days
+
+        results.append(
+            {
+                "customer_id": row.customer_id,
+                "customer_name": row.customer_name,
+                "customer_phone": row.customer_phone,
+                "recency_days": recency_days,
+                "frequency": row.frequency,
+                "monetary": Decimal(row.monetary) if row.monetary else Decimal("0.0"),
+            }
+        )
+
+    return results
