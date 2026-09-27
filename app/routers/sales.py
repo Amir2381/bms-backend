@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from fastapi import BackgroundTasks
 from fastapi_cache import FastAPICache
 
 from app.core.dependencies import (
@@ -66,11 +65,14 @@ def get_sale(
 @router.delete("/{sale_id}")
 def delete_sale(
     sale_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     sale = get_sale_or_404(sale_id, db, current_user)
     sale_repository.delete_sale(db, sale)
+
+    background_tasks.add_task(FastAPICache.clear, namespace="dashboard")
 
     return {
         "message": "Sale deleted",

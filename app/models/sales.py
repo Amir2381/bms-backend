@@ -15,7 +15,10 @@ if TYPE_CHECKING:
 
 class Sale(Base):
     __tablename__ = "sales"
-    __table_args__ = (Index("ix_sales_branch_date", "branch_id", "sale_date"),)
+    __table_args__ = (
+        Index("ix_sales_branch_date", "branch_id", "sale_date"),
+        Index("ix_sales_customer_date", "customer_id", "sale_date"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

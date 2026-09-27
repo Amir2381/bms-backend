@@ -11,6 +11,7 @@ from fastapi import (
     BackgroundTasks,
 )
 from sqlalchemy.orm import Session
+from fastapi_cache import FastAPICache
 
 from app.core.config import settings
 from app.core.dependencies import get_admin_user
@@ -97,6 +98,8 @@ async def import_sales(
             db=db,
             current_user=current_user,
         )
+
+        background_tasks.add_task(FastAPICache.clear, namespace="dashboard")
 
         return {
             "message": "Sales imported successfully.",
