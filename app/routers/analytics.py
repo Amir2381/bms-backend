@@ -37,7 +37,12 @@ from app.services.reporting.utils import (
     stream_multi_sheet_excel_response,
 )
 
-from app.schemas.analytics import RFMCustomerItem, RFMSegmentationResponse
+from app.schemas.analytics import (
+    RFMCustomerItem,
+    RFMSegmentationResponse,
+    SalesForecastItem,
+    SalesForecastResponse,
+)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -679,5 +684,29 @@ def get_rfm_segmentation(
                 segment=c.segment,
             )
             for c in result.customers
+        ]
+    )
+
+
+@router.get("/forecast", response_model=SalesForecastResponse)
+@limiter.limit("20/minute")
+def get_sales_forecast(
+    request: Request,
+    days: int = Query(7, description="Number of days to forecast", ge=1, le=30),
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    forecast_data = service.get_sales_forecast(current_user, days, branch_id)
+
+    return SalesForecastResponse(
+        forecasts=[
+            SalesForecastItem(
+                date=f.date,
+                expected_revenue=f.expected_revenue,
+            )
+            for f in forecast_data.forecasts
         ]
     )

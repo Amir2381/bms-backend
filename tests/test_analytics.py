@@ -330,3 +330,40 @@ def test_get_rfm_segmentation(client: TestClient):
         "At Risk",
         "Needs Attention",
     ]
+
+
+def test_get_sales_forecast(client: TestClient):
+    db = TestingSessionLocal()
+    from datetime import timedelta
+
+    try:
+        today = datetime.now(timezone.utc)
+
+        for i, amount in enumerate([100.0, 200.0, 300.0]):
+            sale = Sale(user_id=1, branch_id=1, sale_date=today - timedelta(days=2 - i))
+            db.add(sale)
+            db.commit()
+            db.refresh(sale)
+
+            item = SaleItem(
+                sale_id=sale.id,
+                product_id=1,
+                quantity=1,
+                unit_price=Decimal(str(amount)),
+            )
+            db.add(item)
+            db.commit()
+
+    finally:
+        db.close()
+
+    response = client.get("/analytics/forecast?days=3")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "forecasts" in data
+    assert len(data["forecasts"]) == 3
+
+    first_prediction = data["forecasts"][0]
+    assert "date" in first_prediction
+    assert float(first_prediction["expected_revenue"]) > 0

@@ -138,3 +138,12 @@ class RFMCustomerItem(BaseModel):
 
 class RFMSegmentationResponse(BaseModel):
     customers: List[RFMCustomerItem]
+
+
+class SalesForecastItem(BaseModel):
+    date: date
+    expected_revenue: Decimal
+
+
+class SalesForecastResponse(BaseModel):
+    forecasts: List[SalesForecastItem]

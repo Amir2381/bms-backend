@@ -1,5 +1,5 @@
 import datetime
-
+from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.models.user import User, UserRole
@@ -23,7 +23,12 @@ from app.services.analytics.types import (
     SummaryMetrics,
 )
 
-from app.services.analytics.types import RFMCustomer, RFMSegmentationResult
+from app.services.analytics.types import (
+    RFMCustomer,
+    RFMSegmentationResult,
+    SalesForecast,
+    SalesForecastPoint,
+)
 
 
 class AnalyticsService:
@@ -271,3 +276,56 @@ class AnalyticsService:
             )
 
         return RFMSegmentationResult(customers=customers)
+
+    def get_sales_forecast(
+        self,
+        current_user: User,
+        days_to_predict: int = 7,
+        branch_id: int | None = None,
+    ) -> SalesForecast:
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
+
+        end_date = datetime.date.today()
+        start_date = end_date - datetime.timedelta(days=30)
+
+        trend_data = self.get_sales_trend(
+            current_user=current_user,
+            period="daily",
+            start_date=start_date,
+            end_date=end_date,
+            branch_id=target_branch_id,
+        )
+
+        revenues = [float(point.revenue) for point in trend_data.points]
+
+        if not revenues:
+            return SalesForecast(forecasts=[])
+
+        forecasts = []
+        current_date = end_date
+        window_size = 5
+
+        working_revenues = revenues.copy()
+
+        for _ in range(days_to_predict):
+            current_date += datetime.timedelta(days=1)
+
+            recent = working_revenues[-window_size:]
+            n = len(recent)
+
+            if n == 0:
+                predicted = 0.0
+            else:
+                weights = list(range(1, n + 1))
+                total_weight = sum(weights)
+                predicted = sum(r * w for r, w in zip(recent, weights)) / total_weight
+
+            working_revenues.append(predicted)
+            forecasts.append(
+                SalesForecastPoint(
+                    date=current_date,
+                    expected_revenue=Decimal(round(predicted, 2)),
+                )
+            )
+
+        return SalesForecast(forecasts=forecasts)

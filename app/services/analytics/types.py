@@ -133,3 +133,14 @@ class RFMCustomer:
 @dataclass(frozen=True)
 class RFMSegmentationResult:
     customers: list[RFMCustomer]
+
+
+@dataclass(frozen=True)
+class SalesForecastPoint:
+    date: date
+    expected_revenue: Decimal
+
+
+@dataclass(frozen=True)
+class SalesForecast:
+    forecasts: list[SalesForecastPoint]
