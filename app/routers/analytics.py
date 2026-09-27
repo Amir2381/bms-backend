@@ -42,6 +42,8 @@ from app.schemas.analytics import (
     RFMSegmentationResponse,
     SalesForecastItem,
     SalesForecastResponse,
+    InsightItem,
+    ProactiveInsightsResponse,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -708,5 +710,28 @@ def get_sales_forecast(
                 expected_revenue=f.expected_revenue,
             )
             for f in forecast_data.forecasts
+        ]
+    )
+
+
+@router.get("/insights", response_model=ProactiveInsightsResponse)
+@limiter.limit("20/minute")
+def get_proactive_insights(
+    request: Request,
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    result = service.get_proactive_insights(current_user, branch_id)
+
+    return ProactiveInsightsResponse(
+        insights=[
+            InsightItem(
+                type=i.type,
+                message=i.message,
+            )
+            for i in result.insights
         ]
     )

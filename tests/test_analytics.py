@@ -367,3 +367,46 @@ def test_get_sales_forecast(client: TestClient):
     first_prediction = data["forecasts"][0]
     assert "date" in first_prediction
     assert float(first_prediction["expected_revenue"]) > 0
+
+
+def test_get_proactive_insights_sales_drop(client: TestClient):
+    db = TestingSessionLocal()
+    from datetime import timedelta
+
+    try:
+        today = datetime.now(timezone.utc)
+
+        for i in range(8, 15):
+            sale = Sale(user_id=1, branch_id=1, sale_date=today - timedelta(days=i))
+            db.add(sale)
+            db.commit()
+            db.refresh(sale)
+
+            item = SaleItem(
+                sale_id=sale.id, product_id=1, quantity=10, unit_price=Decimal("100.0")
+            )
+            db.add(item)
+            db.commit()
+
+        for i in range(1, 8):
+            sale = Sale(user_id=1, branch_id=1, sale_date=today - timedelta(days=i))
+            db.add(sale)
+            db.commit()
+            db.refresh(sale)
+
+            item = SaleItem(
+                sale_id=sale.id, product_id=1, quantity=2, unit_price=Decimal("100.0")
+            )
+            db.add(item)
+            db.commit()
+    finally:
+        db.close()
+
+    response = client.get("/analytics/insights")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "insights" in data
+
+    warnings = [i for i in data["insights"] if i["type"] == "WARNING"]
+    assert any("dropped by" in w["message"] for w in warnings)

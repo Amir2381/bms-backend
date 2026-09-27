@@ -147,3 +147,12 @@ class SalesForecastItem(BaseModel):
 
 class SalesForecastResponse(BaseModel):
     forecasts: List[SalesForecastItem]
+
+
+class InsightItem(BaseModel):
+    type: str
+    message: str
+
+
+class ProactiveInsightsResponse(BaseModel):
+    insights: List[InsightItem]

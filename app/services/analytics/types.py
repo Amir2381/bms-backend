@@ -144,3 +144,14 @@ class SalesForecastPoint:
 @dataclass(frozen=True)
 class SalesForecast:
     forecasts: list[SalesForecastPoint]
+
+
+@dataclass(frozen=True)
+class InsightMessage:
+    type: str
+    message: str
+
+
+@dataclass(frozen=True)
+class ProactiveInsightsResult:
+    insights: list[InsightMessage]

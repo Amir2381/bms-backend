@@ -28,6 +28,8 @@ from app.services.analytics.types import (
     RFMSegmentationResult,
     SalesForecast,
     SalesForecastPoint,
+    InsightMessage,
+    ProactiveInsightsResult,
 )
 
 
@@ -329,3 +331,76 @@ class AnalyticsService:
             )
 
         return SalesForecast(forecasts=forecasts)
+
+    def get_proactive_insights(
+        self,
+        current_user: User,
+        branch_id: int | None = None,
+    ) -> ProactiveInsightsResult:
+        insights = []
+        target_branch_id = self._get_target_branch_id(current_user, branch_id)
+
+        end_date = datetime.date.today()
+        start_date = end_date - datetime.timedelta(days=14)
+
+        trend_data = self.get_sales_trend(
+            current_user=current_user,
+            period="daily",
+            start_date=start_date,
+            end_date=end_date,
+            branch_id=target_branch_id,
+        )
+
+        curr_week_start = end_date - datetime.timedelta(days=7)
+        prev_week_revenue = 0.0
+        curr_week_revenue = 0.0
+
+        for point in trend_data.points:
+            if point.period > curr_week_start:
+                curr_week_revenue += float(point.revenue)
+            else:
+                prev_week_revenue += float(point.revenue)
+
+        if prev_week_revenue > 0:
+            drop_ratio = (prev_week_revenue - curr_week_revenue) / prev_week_revenue
+            if drop_ratio >= 0.20:
+                percentage = round(drop_ratio * 100)
+                insights.append(
+                    InsightMessage(
+                        type="WARNING",
+                        message=f"Sales have dropped by {percentage}% in the last 7 days compared to the previous week.",
+                    )
+                )
+
+        inventory_alerts = self.get_inventory_alerts(
+            current_user=current_user,
+            days_threshold=3,
+            lookback_days=30,
+            branch_id=target_branch_id,
+        )
+
+        for alert in inventory_alerts.alerts:
+            if alert.current_stock == 0:
+                insights.append(
+                    InsightMessage(
+                        type="CRITICAL",
+                        message=f"Product '{alert.product_name}' is out of stock!",
+                    )
+                )
+            elif alert.days_remaining is not None:
+                insights.append(
+                    InsightMessage(
+                        type="WARNING",
+                        message=f"Product '{alert.product_name}' will run out in ~{round(alert.days_remaining)} days.",
+                    )
+                )
+
+        if not insights:
+            insights.append(
+                InsightMessage(
+                    type="INFO",
+                    message="All metrics are stable. No immediate action required.",
+                )
+            )
+
+        return ProactiveInsightsResult(insights=insights)
