@@ -32,7 +32,7 @@ def create_sale(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        new_sale = sale_service.create_sale(db, sale)
+        new_sale = sale_service.create_sale(db, sale, background_tasks)
         background_tasks.add_task(FastAPICache.clear, namespace="dashboard")
         return new_sale
     except UserNotFoundError as exc:

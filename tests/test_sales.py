@@ -184,3 +184,40 @@ def test_delete_sale_not_found(client):
     response = client.delete("/sales/999")
 
     assert response.status_code == 404
+
+
+def test_system_alerts_on_sale(client):
+    from tests.database import TestingSessionLocal
+    from app.models.system_alert import SystemAlert
+    from app.models.product import Product
+
+    db = TestingSessionLocal()
+    try:
+        product = Product(name="Alert Product", price=100.0, stock=2)
+        db.add(product)
+        db.commit()
+        db.refresh(product)
+        product_id = product.id
+    finally:
+        db.close()
+
+    sale_data = {
+        "user_id": 1,
+        "items": [
+            {
+                "product_id": product_id,
+                "quantity": 2,
+            }
+        ],
+    }
+
+    response = client.post("/sales", json=sale_data)
+    assert response.status_code == 200
+
+    db = TestingSessionLocal()
+    try:
+        alerts = db.query(SystemAlert).filter(SystemAlert.type == "CRITICAL").all()
+        assert len(alerts) >= 1
+        assert any("Alert Product" in a.message for a in alerts)
+    finally:
+        db.close()

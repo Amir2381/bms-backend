@@ -27,6 +27,13 @@ app.dependency_overrides[get_current_user] = override_get_current_user
 
 
 @pytest.fixture(autouse=True)
+def mock_background_db_session(monkeypatch):
+    from app.services import sale_service
+
+    monkeypatch.setattr(sale_service, "SessionLocal", TestingSessionLocal)
+
+
+@pytest.fixture(autouse=True)
 def setup_database():
     Base.metadata.drop_all(bind=test_engine)
     test_engine.dispose()

@@ -12,6 +12,7 @@ from app.models.user import User
 from app.models.branch import Branch
 from app.models.customer import Customer
 from app.models.audit_log import AuditLog
+from app.models.system_alert import SystemAlert
 
 config = context.config
 
