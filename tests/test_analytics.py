@@ -438,3 +438,17 @@ def test_dashboard_cache_and_invalidation(client: TestClient):
         assert response3.status_code == 200
     finally:
         db.close()
+
+
+def test_dashboard_export_stress(client: TestClient):
+    import concurrent.futures
+
+    def fetch_export():
+        return client.get("/analytics/dashboard/export")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(fetch_export) for _ in range(10)]
+        results = [f.result() for f in concurrent.futures.as_completed(futures)]
+
+    for res in results:
+        assert res.status_code == 200

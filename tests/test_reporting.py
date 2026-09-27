@@ -121,6 +121,6 @@ def test_export_dashboard_excel(client: TestClient):
         == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     assert (
-        "attachment; filename=dashboard_report.xlsx"
+        'attachment; filename="dashboard_report.xlsx"'
         in response.headers["content-disposition"]
     )

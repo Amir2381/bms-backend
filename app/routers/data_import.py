@@ -1,7 +1,15 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+    Request,
+    BackgroundTasks,
+)
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -46,6 +54,7 @@ def create_import_service(file_path: str) -> ImportService:
 @limiter.limit("5/minute")
 async def import_sales(
     request: Request,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_admin_user),
@@ -123,4 +132,4 @@ async def import_sales(
 
     finally:
         if temporary_file_path:
-            Path(temporary_file_path).unlink(missing_ok=True)
+            background_tasks.add_task(Path(temporary_file_path).unlink, missing_ok=True)
