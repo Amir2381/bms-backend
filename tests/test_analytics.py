@@ -410,3 +410,31 @@ def test_get_proactive_insights_sales_drop(client: TestClient):
 
     warnings = [i for i in data["insights"] if i["type"] == "WARNING"]
     assert any("dropped by" in w["message"] for w in warnings)
+
+
+def test_dashboard_cache_and_invalidation(client: TestClient):
+    db = TestingSessionLocal()
+
+    try:
+        response1 = client.get("/analytics/dashboard")
+        assert response1.status_code == 200
+
+        response2 = client.get("/analytics/dashboard")
+        assert response2.status_code == 200
+
+        sale_data = {
+            "user_id": 1,
+            "items": [
+                {
+                    "product_id": 1,
+                    "quantity": 1,
+                }
+            ],
+        }
+        create_res = client.post("/sales", json=sale_data)
+        assert create_res.status_code == 200
+
+        response3 = client.get("/analytics/dashboard")
+        assert response3.status_code == 200
+    finally:
+        db.close()

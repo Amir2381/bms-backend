@@ -1,6 +1,14 @@
 import logging
 import uuid
+import sys
 
+from contextlib import asynccontextmanager
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
+from fastapi_cache.backends.redis import RedisBackend
+from redis import asyncio as aioredis
+
+from app.core.config import settings
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +40,18 @@ setup_logging()
 
 logger = logging.getLogger("bms")
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if "pytest" in sys.modules:
+        FastAPICache.init(InMemoryBackend(), prefix="bms-cache")
+    else:
+        redis = aioredis.from_url(settings.redis_url)
+        FastAPICache.init(RedisBackend(redis), prefix="bms-cache")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

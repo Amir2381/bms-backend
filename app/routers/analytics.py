@@ -3,7 +3,9 @@ from typing import Any, Iterator
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
+from fastapi_cache.decorator import cache
 
+from app.core.cache import branch_key_builder
 from app.core.dependencies import get_admin_user
 from app.core.rate_limit import limiter
 from app.core.security import get_current_user
@@ -457,6 +459,7 @@ def get_inventory_alerts(
 
 @router.get("/dashboard", response_model=DashboardResponse)
 @limiter.limit("20/minute")
+@cache(expire=3600, namespace="dashboard", key_builder=branch_key_builder)
 def get_dashboard_data(
     request: Request,
     period: str = Query("daily", description="Time period for the trend"),

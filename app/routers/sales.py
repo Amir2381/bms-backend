@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from fastapi import BackgroundTasks
+from fastapi_cache import FastAPICache
 
 from app.core.dependencies import (
     get_sale_or_404,
@@ -25,11 +27,14 @@ router = APIRouter(
 @router.post("", response_model=SaleResponse)
 def create_sale(
     sale: SaleCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return sale_service.create_sale(db, sale)
+        new_sale = sale_service.create_sale(db, sale)
+        background_tasks.add_task(FastAPICache.clear, namespace="dashboard")
+        return new_sale
     except UserNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ProductNotFoundError as exc:
