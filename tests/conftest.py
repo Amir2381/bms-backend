@@ -9,6 +9,7 @@ from app.models.branch import Branch
 from app.models.product import Product
 from app.models.user import User, UserRole
 from tests.database import TestingSessionLocal, override_get_db, test_engine
+from app.worker.celery_app import celery_app
 
 
 def override_get_current_user():
@@ -34,9 +35,10 @@ app.dependency_overrides[get_auth_context] = override_get_auth_context
 
 @pytest.fixture(autouse=True)
 def mock_background_db_session(monkeypatch):
-    from app.services import sale_service
+    from app.worker import tasks
 
-    monkeypatch.setattr(sale_service, "SessionLocal", TestingSessionLocal)
+    monkeypatch.setattr(tasks, "SessionLocal", TestingSessionLocal)
+    celery_app.conf.update(task_always_eager=True)
 
 
 @pytest.fixture(autouse=True)
