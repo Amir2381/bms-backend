@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -8,11 +9,12 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.redis import sync_redis
 from app.db.database import get_db
 from app.models.user import User
 from app.repositories import user_repository
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],
@@ -37,8 +39,12 @@ def get_current_user(
         )
 
         email = payload.get("sub")
+        jti = payload.get("jti")
 
-        if email is None:
+        if email is None or jti is None:
+            raise credentials_exception
+
+        if sync_redis.exists(f"bl_{jti}"):
             raise credentials_exception
 
     except JWTError:
@@ -77,7 +83,30 @@ def create_access_token(user: User) -> str:
     to_encode = {
         "sub": user.email,
         "role": user.role.value,
+        "type": "access",
         "exp": expire,
+        "jti": str(uuid.uuid4()),
+    }
+
+    encoded_jwt = jwt.encode(
+        to_encode,
+        settings.secret_key,
+        algorithm=settings.algorithm,
+    )
+
+    return encoded_jwt
+
+
+def create_refresh_token(user: User) -> str:
+    expire = datetime.now(UTC) + timedelta(
+        days=settings.refresh_token_expire_days,
+    )
+
+    to_encode = {
+        "sub": user.email,
+        "type": "refresh",
+        "exp": expire,
+        "jti": str(uuid.uuid4()),
     }
 
     encoded_jwt = jwt.encode(
