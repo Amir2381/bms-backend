@@ -1,7 +1,10 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-TEST_DATABASE_URL = "postgresql+psycopg://postgres:1122@localhost:5432/test_bms_db"
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL", "postgresql+psycopg://postgres:1122@localhost:5432/test_bms_db"
+)
 
 test_engine = create_engine(TEST_DATABASE_URL)
 
