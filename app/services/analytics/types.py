@@ -155,3 +155,23 @@ class InsightMessage:
 @dataclass(frozen=True)
 class ProactiveInsightsResult:
     insights: list[InsightMessage]
+
+
+@dataclass(frozen=True)
+class BranchComparison:
+    branch_id: int
+    branch_name: str
+    current_month_revenue: Decimal
+    previous_month_revenue: Decimal
+    revenue_growth_percent: Decimal
+    current_month_profit: Decimal
+    previous_month_profit: Decimal
+    profit_growth_percent: Decimal
+    current_month_transactions: int
+    previous_month_transactions: int
+    transaction_growth_percent: Decimal
+
+
+@dataclass(frozen=True)
+class BranchComparisonResult:
+    comparisons: list[BranchComparison]

@@ -21,6 +21,8 @@ from app.services.analytics.types import (
     SalesTrend,
     SalesTrendPoint,
     SummaryMetrics,
+    BranchComparison,
+    BranchComparisonResult,
 )
 
 from app.services.analytics.types import (
@@ -404,3 +406,56 @@ class AnalyticsService:
             )
 
         return ProactiveInsightsResult(insights=insights)
+
+    def compare_branches(
+        self,
+        current_user: User,
+    ) -> BranchComparisonResult:
+        if current_user.role != UserRole.ADMIN:
+            return BranchComparisonResult(comparisons=[])
+
+        data = sale_repository.compare_branches(self._db)
+
+        comparisons = []
+        for item in data:
+            prev_rev = item["previous_month_revenue"]
+            curr_rev = item["current_month_revenue"]
+            rev_growth = (
+                round(((curr_rev - prev_rev) / prev_rev) * 100, 2)
+                if prev_rev > 0
+                else Decimal("0.0")
+            )
+
+            prev_prof = item["previous_month_profit"]
+            curr_prof = item["current_month_profit"]
+            prof_growth = (
+                round(((curr_prof - prev_prof) / prev_prof) * 100, 2)
+                if prev_prof > 0
+                else Decimal("0.0")
+            )
+
+            prev_txn = Decimal(item["previous_month_transactions"])
+            curr_txn = Decimal(item["current_month_transactions"])
+            txn_growth = (
+                round(((curr_txn - prev_txn) / prev_txn) * 100, 2)
+                if prev_txn > 0
+                else Decimal("0.0")
+            )
+
+            comparisons.append(
+                BranchComparison(
+                    branch_id=item["branch_id"],
+                    branch_name=item["branch_name"],
+                    current_month_revenue=curr_rev,
+                    previous_month_revenue=prev_rev,
+                    revenue_growth_percent=rev_growth,
+                    current_month_profit=curr_prof,
+                    previous_month_profit=prev_prof,
+                    profit_growth_percent=prof_growth,
+                    current_month_transactions=int(curr_txn),
+                    previous_month_transactions=int(prev_txn),
+                    transaction_growth_percent=txn_growth,
+                )
+            )
+
+        return BranchComparisonResult(comparisons=comparisons)

@@ -52,6 +52,8 @@ from app.schemas.analytics import (
     SalesForecastResponse,
     InsightItem,
     ProactiveInsightsResponse,
+    BranchComparisonItem,
+    BranchComparisonResponse,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -745,5 +747,34 @@ def get_proactive_insights(
                 message=i.message,
             )
             for i in result.insights
+        ]
+    )
+
+
+@router.get("/branches/compare", response_model=BranchComparisonResponse)
+@limiter.limit("10/minute")
+def compare_branches(
+    request: Request,
+    current_user: User = Depends(get_admin_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    result = service.compare_branches(current_user)
+
+    return BranchComparisonResponse(
+        comparisons=[
+            BranchComparisonItem(
+                branch_id=c.branch_id,
+                branch_name=c.branch_name,
+                current_month_revenue=c.current_month_revenue,
+                previous_month_revenue=c.previous_month_revenue,
+                revenue_growth_percent=c.revenue_growth_percent,
+                current_month_profit=c.current_month_profit,
+                previous_month_profit=c.previous_month_profit,
+                profit_growth_percent=c.profit_growth_percent,
+                current_month_transactions=c.current_month_transactions,
+                previous_month_transactions=c.previous_month_transactions,
+                transaction_growth_percent=c.transaction_growth_percent,
+            )
+            for c in result.comparisons
         ]
     )

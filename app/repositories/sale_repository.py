@@ -1,10 +1,11 @@
 import datetime
 from decimal import Decimal
 
-from sqlalchemy import Date as SqlDate, Numeric
+from sqlalchemy import Date as SqlDate, Numeric, case
 from sqlalchemy import Select, cast, func
 from sqlalchemy.orm import Session, aliased, joinedload
 
+from app.models.branch import Branch
 from app.models.category import Category
 from app.models.customer import Customer
 from app.models.product import Product
@@ -643,6 +644,73 @@ def get_rfm_data(
                 "recency_days": recency_days,
                 "frequency": row.frequency,
                 "monetary": Decimal(row.monetary) if row.monetary else Decimal("0.0"),
+            }
+        )
+
+    return results
+
+
+def compare_branches(db: Session) -> list[dict]:
+    now = datetime.datetime.now(datetime.timezone.utc)
+    current_start = now - datetime.timedelta(days=30)
+    prev_start = now - datetime.timedelta(days=60)
+
+    is_current = cast(Sale.sale_date, SqlDate) >= current_start.date()
+    is_prev = (cast(Sale.sale_date, SqlDate) >= prev_start.date()) & (
+        cast(Sale.sale_date, SqlDate) < current_start.date()
+    )
+
+    profit_expr = SaleItem.quantity * (SaleItem.unit_price - SaleItem.cost_price)
+    revenue_expr = SaleItem.quantity * SaleItem.unit_price
+
+    stmt = (
+        Select(
+            Branch.id.label("branch_id"),
+            Branch.name.label("branch_name"),
+            func.sum(case((is_current, revenue_expr), else_=0)).label(
+                "current_revenue"
+            ),
+            func.sum(case((is_prev, revenue_expr), else_=0)).label("prev_revenue"),
+            func.sum(case((is_current, profit_expr), else_=0)).label("current_profit"),
+            func.sum(case((is_prev, profit_expr), else_=0)).label("prev_profit"),
+            func.count(func.distinct(case((is_current, Sale.id), else_=None))).label(
+                "current_transactions"
+            ),
+            func.count(func.distinct(case((is_prev, Sale.id), else_=None))).label(
+                "prev_transactions"
+            ),
+        )
+        .select_from(Branch)
+        .outerjoin(Sale, Sale.branch_id == Branch.id)
+        .outerjoin(SaleItem, SaleItem.sale_id == Sale.id)
+        .group_by(Branch.id, Branch.name)
+    )
+
+    rows = db.execute(stmt).all()
+
+    results = []
+    for row in rows:
+        curr_rev = (
+            Decimal(row.current_revenue) if row.current_revenue else Decimal("0.0")
+        )
+        prev_rev = Decimal(row.prev_revenue) if row.prev_revenue else Decimal("0.0")
+        curr_prof = (
+            Decimal(row.current_profit) if row.current_profit else Decimal("0.0")
+        )
+        prev_prof = Decimal(row.prev_profit) if row.prev_profit else Decimal("0.0")
+        curr_txn = row.current_transactions or 0
+        prev_txn = row.prev_transactions or 0
+
+        results.append(
+            {
+                "branch_id": row.branch_id,
+                "branch_name": row.branch_name,
+                "current_month_revenue": curr_rev,
+                "previous_month_revenue": prev_rev,
+                "current_month_profit": curr_prof,
+                "previous_month_profit": prev_prof,
+                "current_month_transactions": curr_txn,
+                "previous_month_transactions": prev_txn,
             }
         )
 

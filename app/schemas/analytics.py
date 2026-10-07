@@ -156,3 +156,21 @@ class InsightItem(BaseModel):
 
 class ProactiveInsightsResponse(BaseModel):
     insights: List[InsightItem]
+
+
+class BranchComparisonItem(BaseModel):
+    branch_id: int
+    branch_name: str
+    current_month_revenue: Decimal
+    previous_month_revenue: Decimal
+    revenue_growth_percent: Decimal
+    current_month_profit: Decimal
+    previous_month_profit: Decimal
+    profit_growth_percent: Decimal
+    current_month_transactions: int
+    previous_month_transactions: int
+    transaction_growth_percent: Decimal
+
+
+class BranchComparisonResponse(BaseModel):
+    comparisons: List[BranchComparisonItem]

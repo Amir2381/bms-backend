@@ -452,3 +452,78 @@ def test_dashboard_export_stress(client: TestClient):
 
     for res in results:
         assert res.status_code == 200
+
+
+def test_compare_branches(client: TestClient):
+    db = TestingSessionLocal()
+    from datetime import timedelta
+
+    try:
+        today = datetime.now(timezone.utc)
+
+        branch2 = Branch(name="Branch Comp 2", location="Test")
+        db.add(branch2)
+        db.commit()
+        db.refresh(branch2)
+
+        sale1 = Sale(user_id=1, branch_id=1, sale_date=today - timedelta(days=10))
+        sale2 = Sale(user_id=1, branch_id=1, sale_date=today - timedelta(days=40))
+
+        sale3 = Sale(
+            user_id=1, branch_id=branch2.id, sale_date=today - timedelta(days=5)
+        )
+
+        db.add_all([sale1, sale2, sale3])
+        db.commit()
+
+        item1 = SaleItem(
+            sale_id=sale1.id,
+            product_id=1,
+            quantity=1,
+            unit_price=Decimal("100.0"),
+            cost_price=Decimal("50.0"),
+        )
+        item2 = SaleItem(
+            sale_id=sale2.id,
+            product_id=1,
+            quantity=1,
+            unit_price=Decimal("80.0"),
+            cost_price=Decimal("40.0"),
+        )
+        item3 = SaleItem(
+            sale_id=sale3.id,
+            product_id=1,
+            quantity=2,
+            unit_price=Decimal("200.0"),
+            cost_price=Decimal("100.0"),
+        )
+        db.add_all([item1, item2, item3])
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get("/analytics/branches/compare")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "comparisons" in data
+    assert len(data["comparisons"]) >= 2
+
+    branch1_comp = next(c for c in data["comparisons"] if c["branch_id"] == 1)
+    assert float(branch1_comp["current_month_revenue"]) >= 100.0
+    assert float(branch1_comp["previous_month_revenue"]) >= 80.0
+    assert float(branch1_comp["revenue_growth_percent"]) > 0
+
+
+def test_compare_branches_stress(client: TestClient):
+    import concurrent.futures
+
+    def fetch_compare():
+        return client.get("/analytics/branches/compare")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(fetch_compare) for _ in range(10)]
+        results = [f.result() for f in concurrent.futures.as_completed(futures)]
+
+    for res in results:
+        assert res.status_code == 200
