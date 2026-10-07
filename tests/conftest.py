@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_auth_context, AuthContext
 from app.db.database import Base, get_db
 from app.main import app
 from app.models.branch import Branch
@@ -22,8 +22,14 @@ def override_get_current_user():
     )
 
 
+def override_get_auth_context():
+    user = override_get_current_user()
+    return AuthContext(user=user)
+
+
 app.dependency_overrides[get_db] = override_get_db
 app.dependency_overrides[get_current_user] = override_get_current_user
+app.dependency_overrides[get_auth_context] = override_get_auth_context
 
 
 @pytest.fixture(autouse=True)

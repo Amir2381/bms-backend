@@ -6,7 +6,7 @@ from app.core.dependencies import (
     get_sale_or_404,
 )
 from app.services import sale_service
-from app.core.security import get_current_user
+from app.core.security import get_auth_context, AuthContext, get_current_user
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.repositories import sale_repository
@@ -28,7 +28,7 @@ def create_sale(
     sale: SaleCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    auth_context: AuthContext = Depends(get_auth_context),
 ):
     try:
         new_sale = sale_service.create_sale(db, sale, background_tasks)
@@ -45,11 +45,12 @@ def create_sale(
 @router.get("", response_model=list[SaleResponse])
 def get_all_sales(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    auth_context: AuthContext = Depends(get_auth_context),
 ):
-    branch_id = (
-        current_user.branch_id if current_user.role == UserRole.SALESPERSON else None
-    )
+    branch_id = None
+    if auth_context.user and auth_context.user.role == UserRole.SALESPERSON:
+        branch_id = auth_context.user.branch_id
+
     return sale_repository.get_all_sales(db, branch_id=branch_id)
 
 

@@ -1,9 +1,10 @@
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -14,7 +15,8 @@ from app.db.database import get_db
 from app.models.user import User
 from app.repositories import user_repository
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],
@@ -22,14 +24,23 @@ pwd_context = CryptContext(
 )
 
 
+@dataclass
+class AuthContext:
+    user: User | None = None
+    api_key: Any | None = None
+
+
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
     )
+
+    if not token:
+        raise credentials_exception
 
     try:
         payload = jwt.decode(
@@ -59,6 +70,36 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+
+def get_auth_context(
+    token: str | None = Depends(oauth2_scheme),
+    api_key: str | None = Depends(api_key_header),
+    db: Session = Depends(get_db),
+) -> AuthContext:
+    if token:
+        try:
+            user = get_current_user(token, db)
+            return AuthContext(user=user)
+        except HTTPException:
+            pass
+
+    if api_key:
+        from app.repositories import api_key_repository
+
+        key_record = api_key_repository.get_api_key_by_key(db, api_key)
+        if key_record and key_record.is_active:
+            if key_record.expires_at and key_record.expires_at.replace(
+                tzinfo=UTC
+            ) < datetime.now(UTC):
+                pass
+            else:
+                return AuthContext(api_key=key_record)
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+    )
 
 
 def hash_password(password: str) -> str:

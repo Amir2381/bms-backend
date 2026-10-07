@@ -13,6 +13,7 @@ from app.models.branch import Branch
 from app.models.customer import Customer
 from app.models.audit_log import AuditLog
 from app.models.system_alert import SystemAlert
+from app.models.api_key import APIKey
 
 config = context.config
 
