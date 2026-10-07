@@ -30,6 +30,7 @@ from app.routers import (
     products,
     sales,
     users,
+    webhooks,
 )
 from app.services.data_import.exceptions import (
     ImportError,
@@ -66,6 +67,7 @@ app.include_router(users.router)
 app.include_router(data_import.router)
 app.include_router(analytics.router)
 app.include_router(customers.router)
+app.include_router(webhooks.router)
 
 app.add_middleware(
     CORSMiddleware,

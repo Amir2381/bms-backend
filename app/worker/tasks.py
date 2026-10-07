@@ -1,3 +1,7 @@
+import json
+import socket
+import urllib.request
+from urllib.error import URLError, HTTPError
 from datetime import datetime, timezone, timedelta
 
 from sqlalchemy import select
@@ -60,3 +64,19 @@ def check_at_risk_customers():
                     db.add(new_alert)
 
         db.commit()
+
+
+@celery_app.task(bind=True, max_retries=5)
+def send_webhook_event(self, url: str, payload: dict):
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return response.status
+    except (URLError, HTTPError, socket.timeout) as exc:
+        countdown = 2 ** (self.request.retries + 1)
+        raise self.retry(exc=exc, countdown=countdown)

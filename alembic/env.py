@@ -14,6 +14,7 @@ from app.models.customer import Customer
 from app.models.audit_log import AuditLog
 from app.models.system_alert import SystemAlert
 from app.models.api_key import APIKey
+from app.models.webhook import WebhookEndpoint
 
 config = context.config
 

@@ -8,6 +8,7 @@ from app.repositories import (
     product_repository,
     sale_repository,
     user_repository,
+    webhook_repository,
 )
 from app.schemas.sale import SaleCreate
 from app.services.exceptions import (
@@ -16,7 +17,7 @@ from app.services.exceptions import (
     ProductNotFoundError,
     UserNotFoundError,
 )
-from app.worker.tasks import check_and_create_alerts
+from app.worker.tasks import check_and_create_alerts, send_webhook_event
 
 
 def create_sale(
@@ -71,5 +72,22 @@ def create_sale(
     created_sale = sale_repository.create_sale(db, new_sale)
 
     check_and_create_alerts.delay(created_sale.branch_id)
+
+    active_webhooks = webhook_repository.get_active_webhooks(db)
+    if active_webhooks:
+        payload = {
+            "event": "sale.created",
+            "data": {
+                "sale_id": created_sale.id,
+                "branch_id": created_sale.branch_id,
+                "user_id": created_sale.user_id,
+                "total_items": sum(i.quantity for i in created_sale.items),
+                "total_amount": float(
+                    sum(i.quantity * i.unit_price for i in created_sale.items)
+                ),
+            },
+        }
+        for wh in active_webhooks:
+            send_webhook_event.delay(wh.url, payload)
 
     return created_sale
