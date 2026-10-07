@@ -1,3 +1,7 @@
+from datetime import datetime, timezone, timedelta
+
+from sqlalchemy import select
+
 from app.db.database import SessionLocal
 from app.models.system_alert import SystemAlert
 from app.repositories import sale_repository
@@ -24,4 +28,35 @@ def check_and_create_alerts(branch_id: int):
                 message=msg,
             )
             db.add(new_alert)
+        db.commit()
+
+
+@celery_app.task
+def check_at_risk_customers():
+    with SessionLocal() as db:
+        rfm_data = sale_repository.get_rfm_data(db, limit=1000)
+
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=7)
+
+        for item in rfm_data:
+            r = item["recency_days"]
+            f = item["frequency"]
+
+            if r > 90 and f < 2:
+                customer_name = item["customer_name"]
+                msg = f"Customer '{customer_name}' has reached the 'At Risk' segment."
+
+                stmt = select(SystemAlert).where(
+                    SystemAlert.message == msg, SystemAlert.created_at >= cutoff_date
+                )
+                existing_alert = db.scalars(stmt).first()
+
+                if not existing_alert:
+                    new_alert = SystemAlert(
+                        branch_id=None,
+                        type="WARNING",
+                        message=msg,
+                    )
+                    db.add(new_alert)
+
         db.commit()

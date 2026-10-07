@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import settings
 
@@ -16,3 +17,10 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
 )
+
+celery_app.conf.beat_schedule = {
+    "check-at-risk-customers-midnight": {
+        "task": "app.worker.tasks.check_at_risk_customers",
+        "schedule": crontab(minute=0, hour=0),
+    },
+}
