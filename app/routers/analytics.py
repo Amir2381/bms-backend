@@ -575,6 +575,7 @@ def get_rfm_segmentation(
 
 @router.get("/forecast", response_model=SalesForecastResponse)
 @limiter.limit("20/minute")
+@cache(expire=43200, namespace="forecast", key_builder=branch_key_builder)
 def get_sales_forecast(
     request: Request,
     days: int = Query(7, description="Number of days to forecast", ge=1, le=30),

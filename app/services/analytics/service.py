@@ -1,6 +1,7 @@
 import datetime
 from decimal import Decimal
 from sqlalchemy.orm import Session
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 from app.models.user import User, UserRole
 from app.repositories import sale_repository
@@ -290,7 +291,7 @@ class AnalyticsService:
         target_branch_id = self._get_target_branch_id(current_user, branch_id)
 
         end_date = datetime.date.today()
-        start_date = end_date - datetime.timedelta(days=30)
+        start_date = end_date - datetime.timedelta(days=90)
 
         trend_data = self.get_sales_trend(
             current_user=current_user,
@@ -300,35 +301,42 @@ class AnalyticsService:
             branch_id=target_branch_id,
         )
 
-        revenues = [float(point.revenue) for point in trend_data.points]
+        date_revenue_map = {
+            point.period: float(point.revenue) for point in trend_data.points
+        }
 
-        if not revenues:
+        revenues = []
+        curr = start_date
+        while curr <= end_date:
+            revenues.append(date_revenue_map.get(curr, 0.0))
+            curr += datetime.timedelta(days=1)
+
+        if not any(revenues):
             return SalesForecast(forecasts=[])
+
+        try:
+            model = ExponentialSmoothing(
+                revenues,
+                trend="add",
+                seasonal="add",
+                seasonal_periods=7,
+                initialization_method="estimated",
+            )
+            fit_model = model.fit()
+            predictions = fit_model.forecast(days_to_predict)
+        except Exception:
+            avg = sum(revenues[-7:]) / 7 if revenues else 0.0
+            predictions = [avg] * days_to_predict
 
         forecasts = []
         current_date = end_date
-        window_size = 5
-
-        working_revenues = revenues.copy()
-
-        for _ in range(days_to_predict):
+        for pred in predictions:
             current_date += datetime.timedelta(days=1)
-
-            recent = working_revenues[-window_size:]
-            n = len(recent)
-
-            if n == 0:
-                predicted = 0.0
-            else:
-                weights = list(range(1, n + 1))
-                total_weight = sum(weights)
-                predicted = sum(r * w for r, w in zip(recent, weights)) / total_weight
-
-            working_revenues.append(predicted)
+            final_pred = max(0.0, float(pred))
             forecasts.append(
                 SalesForecastPoint(
                     date=current_date,
-                    expected_revenue=Decimal(round(predicted, 2)),
+                    expected_revenue=Decimal(round(final_pred, 2)),
                 )
             )
 
