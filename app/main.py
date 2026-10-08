@@ -28,6 +28,7 @@ from app.routers import (
     customers,
     data_import,
     products,
+    reports,
     sales,
     users,
     webhooks,
@@ -69,6 +70,7 @@ app.include_router(data_import.router)
 app.include_router(analytics.router)
 app.include_router(customers.router)
 app.include_router(webhooks.router)
+app.include_router(reports.router)
 app.include_router(health.router)
 
 app.add_middleware(

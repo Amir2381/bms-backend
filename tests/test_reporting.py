@@ -71,31 +71,19 @@ def test_export_analytics_endpoints_csv(client: TestClient):
         "/analytics/products/performance/export?limit=10&export_format=csv"
     )
     assert response.status_code == 200
-    assert response.headers["content-type"] == "text/csv; charset=utf-8"
-    assert (
-        'attachment; filename="product_performance.csv"'
-        in response.headers["content-disposition"]
-    )
+    assert "job_id" in response.json()
 
     response_categories = client.get(
         "/analytics/categories/performance/export?limit=10&export_format=csv"
     )
     assert response_categories.status_code == 200
-    assert response_categories.headers["content-type"] == "text/csv; charset=utf-8"
-    assert (
-        'attachment; filename="category_performance.csv"'
-        in response_categories.headers["content-disposition"]
-    )
+    assert "job_id" in response_categories.json()
 
     response_trends = client.get(
         "/analytics/trends/export?period=daily&export_format=csv"
     )
     assert response_trends.status_code == 200
-    assert response_trends.headers["content-type"] == "text/csv; charset=utf-8"
-    assert (
-        'attachment; filename="sales_trends.csv"'
-        in response_trends.headers["content-disposition"]
-    )
+    assert "job_id" in response_trends.json()
 
 
 def test_export_analytics_endpoints_excel(client: TestClient):
@@ -103,24 +91,10 @@ def test_export_analytics_endpoints_excel(client: TestClient):
         "/analytics/trends/export?period=daily&export_format=excel"
     )
     assert response_trends.status_code == 200
-    assert (
-        response_trends.headers["content-type"]
-        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    assert (
-        'attachment; filename="sales_trends.xlsx"'
-        in response_trends.headers["content-disposition"]
-    )
+    assert "job_id" in response_trends.json()
 
 
 def test_export_dashboard_excel(client: TestClient):
     response = client.get("/analytics/dashboard/export")
     assert response.status_code == 200
-    assert (
-        response.headers["content-type"]
-        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    assert (
-        'attachment; filename="dashboard_report.xlsx"'
-        in response.headers["content-disposition"]
-    )
+    assert "job_id" in response.json()

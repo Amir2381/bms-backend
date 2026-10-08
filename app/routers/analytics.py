@@ -40,10 +40,6 @@ from app.schemas.analytics import (
     SalesVisualizationsResponse,
 )
 from app.services.analytics.service import AnalyticsService
-from app.services.reporting.utils import (
-    stream_report_response,
-    stream_multi_sheet_excel_response,
-)
 
 from app.schemas.analytics import (
     RFMCustomerItem,
@@ -55,6 +51,7 @@ from app.schemas.analytics import (
     BranchComparisonItem,
     BranchComparisonResponse,
 )
+from app.worker.tasks import generate_report_task
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -121,24 +118,16 @@ def export_sales_trends(
         "csv", pattern="^(csv|excel)$", description="Export format"
     ),
     current_user: User = Depends(get_current_user),
-    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    trend_data = service.get_sales_trend(
-        current_user, period, start_date, end_date, branch_id
-    )
-
-    def data_generator() -> Iterator[dict[str, Any]]:
-        for point in trend_data.points:
-            yield {
-                "Period": point.period.isoformat(),
-                "Revenue": str(point.revenue),
-                "Transaction Count": point.transaction_count,
-            }
-
-    headers = ["Period", "Revenue", "Transaction Count"]
-    return stream_report_response(
-        headers, data_generator(), "sales_trends", export_format
-    )
+    params = {
+        "period": period,
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
+        "branch_id": branch_id,
+        "export_format": export_format,
+    }
+    task = generate_report_task.delay("sales_trends", current_user.id, params)
+    return {"job_id": task.id, "message": "Report generation started."}
 
 
 @router.get("/products/performance", response_model=ProductPerformanceResponse)
@@ -186,32 +175,16 @@ def export_product_performance(
         "csv", pattern="^(csv|excel)$", description="Export format"
     ),
     current_user: User = Depends(get_current_user),
-    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    performance_data = service.get_product_performance(
-        current_user, limit, start_date, end_date, branch_id
-    )
-
-    def data_generator() -> Iterator[dict[str, Any]]:
-        for p in performance_data.products:
-            yield {
-                "Product ID": p.product_id,
-                "Product Name": p.product_name,
-                "Quantity Sold": p.quantity_sold,
-                "Revenue": str(p.revenue),
-                "Revenue Share (%)": str(p.revenue_share),
-            }
-
-    headers = [
-        "Product ID",
-        "Product Name",
-        "Quantity Sold",
-        "Revenue",
-        "Revenue Share (%)",
-    ]
-    return stream_report_response(
-        headers, data_generator(), "product_performance", export_format
-    )
+    params = {
+        "limit": limit,
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
+        "branch_id": branch_id,
+        "export_format": export_format,
+    }
+    task = generate_report_task.delay("product_performance", current_user.id, params)
+    return {"job_id": task.id, "message": "Report generation started."}
 
 
 @router.get("/categories/performance", response_model=CategoryPerformanceResponse)
@@ -259,32 +232,16 @@ def export_category_performance(
         "csv", pattern="^(csv|excel)$", description="Export format"
     ),
     current_user: User = Depends(get_current_user),
-    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    performance_data = service.get_category_performance(
-        current_user, limit, start_date, end_date, branch_id
-    )
-
-    def data_generator() -> Iterator[dict[str, Any]]:
-        for c in performance_data.categories:
-            yield {
-                "Category ID": c.category_id if c.category_id else "N/A",
-                "Category Name": c.category_name,
-                "Quantity Sold": c.quantity_sold,
-                "Revenue": str(c.revenue),
-                "Revenue Share (%)": str(c.revenue_share),
-            }
-
-    headers = [
-        "Category ID",
-        "Category Name",
-        "Quantity Sold",
-        "Revenue",
-        "Revenue Share (%)",
-    ]
-    return stream_report_response(
-        headers, data_generator(), "category_performance", export_format
-    )
+    params = {
+        "limit": limit,
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
+        "branch_id": branch_id,
+        "export_format": export_format,
+    }
+    task = generate_report_task.delay("category_performance", current_user.id, params)
+    return {"job_id": task.id, "message": "Report generation started."}
 
 
 @router.get("/salespersons/performance", response_model=SalespersonPerformanceResponse)
@@ -364,34 +321,16 @@ def export_top_customers(
         "csv", pattern="^(csv|excel)$", description="Export format"
     ),
     current_user: User = Depends(get_current_user),
-    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    performance_data = service.get_top_customers(
-        current_user, limit, start_date, end_date, branch_id
-    )
-
-    def data_generator() -> Iterator[dict[str, Any]]:
-        for c in performance_data.customers:
-            yield {
-                "Customer ID": c.customer_id,
-                "Name": c.customer_name,
-                "Phone": c.customer_phone,
-                "Revenue": str(c.revenue),
-                "Profit": str(c.profit),
-                "Transaction Count": c.transaction_count,
-            }
-
-    headers = [
-        "Customer ID",
-        "Name",
-        "Phone",
-        "Revenue",
-        "Profit",
-        "Transaction Count",
-    ]
-    return stream_report_response(
-        headers, data_generator(), "top_customers", export_format
-    )
+    params = {
+        "limit": limit,
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
+        "branch_id": branch_id,
+        "export_format": export_format,
+    }
+    task = generate_report_task.delay("top_customers", current_user.id, params)
+    return {"job_id": task.id, "message": "Report generation started."}
 
 
 @router.get("/cross-selling", response_model=CrossSellingResponse)
@@ -546,81 +485,14 @@ def export_dashboard(
         None, description="Filter by specific branch ID (Admin only)"
     ),
     current_user: User = Depends(get_current_user),
-    service: AnalyticsService = Depends(get_analytics_service),
 ):
-    metrics_data = service.get_summary_metrics(
-        current_user, start_date, end_date, branch_id
-    )
-    metrics_dict = {
-        "Total Sales": str(metrics_data.total_sales),
-        "Total Profit": str(metrics_data.total_profit),
-        "Profit Margin (%)": str(metrics_data.profit_margin),
-        "Total Transactions": metrics_data.total_transactions,
-        "Average Order Value": str(metrics_data.average_order_value),
-        "Highest Sale": (
-            str(metrics_data.highest_sale) if metrics_data.highest_sale else "N/A"
-        ),
-        "Lowest Sale": (
-            str(metrics_data.lowest_sale) if metrics_data.lowest_sale else "N/A"
-        ),
-        "Average Daily Sales": str(metrics_data.average_daily_sales),
-        "Sold Products Count": metrics_data.sold_products_count,
-        "Average CLV": str(metrics_data.average_clv),
+    params = {
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
+        "branch_id": branch_id,
     }
-    metrics_sheet = {
-        "headers": ["Metric", "Value"],
-        "data": [{"Metric": k, "Value": v} for k, v in metrics_dict.items()],
-    }
-
-    trend_data = service.get_sales_trend(
-        current_user, "daily", start_date, end_date, branch_id
-    )
-    trends_sheet = {
-        "headers": ["Period", "Revenue", "Transaction Count"],
-        "data": [
-            {
-                "Period": point.period.isoformat(),
-                "Revenue": str(point.revenue),
-                "Transaction Count": point.transaction_count,
-            }
-            for point in trend_data.points
-        ],
-    }
-
-    product_data = service.get_product_performance(
-        current_user,
-        limit=10,
-        start_date=start_date,
-        end_date=end_date,
-        branch_id=branch_id,
-    )
-    products_sheet = {
-        "headers": [
-            "Product ID",
-            "Product Name",
-            "Quantity Sold",
-            "Revenue",
-            "Revenue Share (%)",
-        ],
-        "data": [
-            {
-                "Product ID": p.product_id,
-                "Product Name": p.product_name,
-                "Quantity Sold": p.quantity_sold,
-                "Revenue": str(p.revenue),
-                "Revenue Share (%)": str(p.revenue_share),
-            }
-            for p in product_data.products
-        ],
-    }
-
-    sheets_data = {
-        "Dashboard Metrics": metrics_sheet,
-        "Sales Trends": trends_sheet,
-        "Top Products": products_sheet,
-    }
-
-    return stream_multi_sheet_excel_response(sheets_data, "dashboard_report")
+    task = generate_report_task.delay("dashboard", current_user.id, params)
+    return {"job_id": task.id, "message": "Report generation started."}
 
 
 @router.get(
