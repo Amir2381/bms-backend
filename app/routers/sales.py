@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from fastapi_cache import FastAPICache
 
 from app.core.dependencies import (
     get_sale_or_404,
@@ -26,13 +25,11 @@ router = APIRouter(
 @router.post("", response_model=SaleResponse)
 def create_sale(
     sale: SaleCreate,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     auth_context: AuthContext = Depends(get_auth_context),
 ):
     try:
         new_sale = sale_service.create_sale(db, sale)
-        background_tasks.add_task(FastAPICache.clear, namespace="dashboard")
         return new_sale
     except UserNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -50,7 +47,6 @@ def get_all_sales(
     branch_id = None
     if auth_context.user and auth_context.user.role == UserRole.SALESPERSON:
         branch_id = auth_context.user.branch_id
-
     return sale_repository.get_all_sales(db, branch_id=branch_id)
 
 
@@ -66,15 +62,11 @@ def get_sale(
 @router.delete("/{sale_id}")
 def delete_sale(
     sale_id: int,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     sale = get_sale_or_404(sale_id, db, current_user)
     sale_repository.delete_sale(db, sale)
-
-    background_tasks.add_task(FastAPICache.clear, namespace="dashboard")
-
     return {
         "message": "Sale deleted",
     }

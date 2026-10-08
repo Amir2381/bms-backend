@@ -73,7 +73,7 @@ def test_export_analytics_endpoints_csv(client: TestClient):
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/csv; charset=utf-8"
     assert (
-        "attachment; filename=product_performance.csv"
+        'attachment; filename="product_performance.csv"'
         in response.headers["content-disposition"]
     )
 
@@ -83,7 +83,7 @@ def test_export_analytics_endpoints_csv(client: TestClient):
     assert response_categories.status_code == 200
     assert response_categories.headers["content-type"] == "text/csv; charset=utf-8"
     assert (
-        "attachment; filename=category_performance.csv"
+        'attachment; filename="category_performance.csv"'
         in response_categories.headers["content-disposition"]
     )
 
@@ -93,7 +93,7 @@ def test_export_analytics_endpoints_csv(client: TestClient):
     assert response_trends.status_code == 200
     assert response_trends.headers["content-type"] == "text/csv; charset=utf-8"
     assert (
-        "attachment; filename=sales_trends.csv"
+        'attachment; filename="sales_trends.csv"'
         in response_trends.headers["content-disposition"]
     )
 
@@ -108,7 +108,7 @@ def test_export_analytics_endpoints_excel(client: TestClient):
         == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     assert (
-        "attachment; filename=sales_trends.xlsx"
+        'attachment; filename="sales_trends.xlsx"'
         in response_trends.headers["content-disposition"]
     )
 

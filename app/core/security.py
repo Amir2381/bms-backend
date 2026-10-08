@@ -38,37 +38,25 @@ def get_current_user(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
     )
-
     if not token:
         raise credentials_exception
-
     try:
         payload = jwt.decode(
             token,
             settings.secret_key,
             algorithms=[settings.algorithm],
         )
-
         email = payload.get("sub")
         jti = payload.get("jti")
-
         if email is None or jti is None:
             raise credentials_exception
-
         if sync_redis.exists(f"bl_{jti}"):
             raise credentials_exception
-
     except JWTError:
         raise credentials_exception
-
-    user = user_repository.get_user_by_email(
-        db,
-        email,
-    )
-
+    user = user_repository.get_user_by_email(db, email)
     if user is None:
         raise credentials_exception
-
     return user
 
 
@@ -83,7 +71,6 @@ def get_auth_context(
             return AuthContext(user=user)
         except HTTPException:
             pass
-
     if api_key:
         from app.repositories import api_key_repository
 
@@ -95,7 +82,6 @@ def get_auth_context(
                 pass
             else:
                 return AuthContext(api_key=key_record)
-
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated",
@@ -120,7 +106,6 @@ def create_access_token(user: User) -> str:
     expire = datetime.now(UTC) + timedelta(
         minutes=settings.access_token_expire_minutes,
     )
-
     to_encode = {
         "sub": user.email,
         "role": user.role.value,
@@ -128,13 +113,11 @@ def create_access_token(user: User) -> str:
         "exp": expire,
         "jti": str(uuid.uuid4()),
     }
-
     encoded_jwt = jwt.encode(
         to_encode,
         settings.secret_key,
         algorithm=settings.algorithm,
     )
-
     return encoded_jwt
 
 
@@ -142,18 +125,30 @@ def create_refresh_token(user: User) -> str:
     expire = datetime.now(UTC) + timedelta(
         days=settings.refresh_token_expire_days,
     )
-
     to_encode = {
         "sub": user.email,
         "type": "refresh",
         "exp": expire,
         "jti": str(uuid.uuid4()),
     }
-
     encoded_jwt = jwt.encode(
         to_encode,
         settings.secret_key,
         algorithm=settings.algorithm,
     )
-
     return encoded_jwt
+
+
+def blacklist_token(token: str) -> None:
+    try:
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.algorithm]
+        )
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        if jti and exp:
+            ttl = exp - int(datetime.now(UTC).timestamp())
+            if ttl > 0:
+                sync_redis.setex(f"bl_{jti}", ttl, "1")
+    except JWTError:
+        pass

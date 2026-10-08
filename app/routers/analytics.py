@@ -467,7 +467,7 @@ def get_inventory_alerts(
 
 @router.get("/dashboard", response_model=DashboardResponse)
 @limiter.limit("20/minute")
-@cache(expire=3600, namespace="dashboard", key_builder=branch_key_builder)
+@cache(expire=300, namespace="dashboard", key_builder=branch_key_builder)
 def get_dashboard_data(
     request: Request,
     period: str = Query("daily", description="Time period for the trend"),
@@ -540,7 +540,6 @@ def get_dashboard_data(
 @limiter.limit("20/minute")
 def export_dashboard(
     request: Request,
-    background_tasks: BackgroundTasks,
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     branch_id: int | None = Query(
@@ -621,9 +620,7 @@ def export_dashboard(
         "Top Products": products_sheet,
     }
 
-    return stream_multi_sheet_excel_response(
-        sheets_data, "dashboard_report", background_tasks
-    )
+    return stream_multi_sheet_excel_response(sheets_data, "dashboard_report")
 
 
 @router.get(

@@ -11,7 +11,6 @@ from fastapi import (
     BackgroundTasks,
 )
 from sqlalchemy.orm import Session
-from fastapi_cache import FastAPICache
 
 from app.core.config import settings
 from app.core.dependencies import get_admin_user
@@ -61,46 +60,32 @@ async def import_sales(
     current_user: User = Depends(get_admin_user),
 ):
     temporary_file_path = None
-
     try:
         validate_file(file.filename)
-
         total_size = 0
-
         with NamedTemporaryFile(
             suffix=Path(file.filename).suffix,
             delete=False,
         ) as temporary_file:
             temporary_file_path = temporary_file.name
-
             while True:
                 chunk = await file.read(CHUNK_SIZE)
-
                 if not chunk:
                     break
-
                 total_size += len(chunk)
-
                 if total_size > settings.import_max_file_size:
                     raise FileTooLargeError(
                         "The uploaded file exceeds the maximum allowed size."
                     )
-
                 temporary_file.write(chunk)
-
         if total_size == 0:
             raise EmptyFileError("The uploaded file is empty.")
-
         import_service = create_import_service(temporary_file_path)
-
         result = import_service.process(
             file_path=temporary_file_path,
             db=db,
             current_user=current_user,
         )
-
-        background_tasks.add_task(FastAPICache.clear, namespace="dashboard")
-
         return {
             "message": "Sales imported successfully.",
             "filename": file.filename,
@@ -114,25 +99,21 @@ async def import_sales(
                 "errors": result.report.errors,
             },
         }
-
     except UnsupportedFileTypeError as exc:
         raise HTTPException(
             status_code=400,
             detail=str(exc),
         ) from exc
-
     except EmptyFileError as exc:
         raise HTTPException(
             status_code=400,
             detail=str(exc),
         ) from exc
-
     except FileTooLargeError as exc:
         raise HTTPException(
             status_code=413,
             detail=str(exc),
         ) from exc
-
     finally:
         if temporary_file_path:
             background_tasks.add_task(Path(temporary_file_path).unlink, missing_ok=True)

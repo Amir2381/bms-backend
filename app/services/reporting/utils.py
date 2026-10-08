@@ -1,9 +1,8 @@
 import os
 from tempfile import NamedTemporaryFile
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 
-from fastapi import BackgroundTasks
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 
 from app.services.reporting.csv_strategy import CsvReportStrategy
 from app.services.reporting.excel_strategy import (
@@ -20,6 +19,15 @@ def cleanup_temp_file(path: str) -> None:
         pass
 
 
+def iter_file_and_cleanup(path: str) -> Iterator[bytes]:
+    try:
+        with open(path, "rb") as f:
+            while chunk := f.read(65536):
+                yield chunk
+    finally:
+        cleanup_temp_file(path)
+
+
 def stream_report_response(
     headers: list[str],
     data: Iterable[dict[str, Any]],
@@ -34,19 +42,17 @@ def stream_report_response(
         generator = ReportGenerator(CsvReportStrategy())
         filename = f"{filename_prefix}.csv"
         media_type = "text/csv"
-
     return StreamingResponse(
         generator.generate(headers, data),
         media_type=media_type,
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
 def stream_multi_sheet_excel_response(
     sheets_data: dict[str, dict[str, Any]],
     filename_prefix: str,
-    background_tasks: BackgroundTasks,
-) -> FileResponse:
+) -> StreamingResponse:
     strategy = MultiSheetExcelReportStrategy()
     filename = f"{filename_prefix}.xlsx"
     media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -56,10 +62,8 @@ def stream_multi_sheet_excel_response(
         temp_file.write(chunk)
     temp_file.close()
 
-    background_tasks.add_task(cleanup_temp_file, temp_file.name)
-
-    return FileResponse(
-        path=temp_file.name,
+    return StreamingResponse(
+        iter_file_and_cleanup(temp_file.name),
         media_type=media_type,
-        filename=filename,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
