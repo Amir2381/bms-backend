@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from openai import OpenAI
 
@@ -71,3 +72,41 @@ class AIAssistantService:
             return response.choices[0].message.content or "هیچ بینشی تولید نشد."
         except Exception as e:
             return f"⚠️ **Error generating AI insights:**\n\n```text\n{str(e)}\n```"
+
+    def chat_with_data(self, user_query: str, context_data: dict[str, Any]) -> str:
+        if not self.client:
+            return "سیستم هوش مصنوعی فعال نیست. لطفاً API Key را در تنظیمات وارد کنید."
+
+        def default_serializer(obj):
+            return str(obj)
+
+        context_json = json.dumps(
+            context_data, default=default_serializer, ensure_ascii=False
+        )
+
+        prompt = (
+            "You are a helpful and expert Business Data Assistant. "
+            "Answer the user's question accurately and concisely based ONLY on the provided Business Context JSON. "
+            "If the answer cannot be found in the context, politely state that you don't have enough data to answer that specific question. "
+            "Do not hallucinate or guess numbers.\n"
+            "Respond entirely in conversational Persian.\n\n"
+            f"--- Business Context ---\n{context_json}\n\n"
+            f"--- User Question ---\n{user_query}"
+        )
+
+        try:
+            response = self.client.chat.completions.create(
+                model="gemini-1.5-flash",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a direct, numbers-driven business data assistant.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=600,
+                temperature=0.2,
+            )
+            return response.choices[0].message.content or "پاسخی دریافت نشد."
+        except Exception as e:
+            return f"خطا در پردازش هوش مصنوعی: {str(e)}"

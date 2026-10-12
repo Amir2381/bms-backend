@@ -47,6 +47,8 @@ from app.schemas.analytics import (
     BranchComparisonItem,
     BranchComparisonResponse,
     AIInsightResponse,
+    AIChatRequest,
+    AIChatResponse,
 )
 from app.services.analytics.service import AnalyticsService
 from app.services.ai_assistant import AIAssistantService
@@ -673,3 +675,51 @@ def get_ai_insights(
     insights_md = ai_service.generate_insights(metrics_data, trend_data)
 
     return AIInsightResponse(markdown_content=insights_md)
+
+
+@router.post("/ai-chat", response_model=AIChatResponse)
+@limiter.limit("10/minute")
+def ai_chat(
+    request: Request,
+    payload: AIChatRequest,
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    query_lower = payload.query.lower()
+    context_data = {}
+
+    if any(keyword in query_lower for keyword in ["محصول", "کالا", "product", "item"]):
+        context_data["top_products"] = service.get_product_performance(
+            current_user, limit=10, branch_id=branch_id
+        )
+
+    if any(keyword in query_lower for keyword in ["شعبه", "branch", "مقایسه"]):
+        context_data["branch_comparison"] = service.compare_branches(current_user)
+
+    if any(keyword in query_lower for keyword in ["پرسنل", "فروشنده", "کارمند"]):
+        context_data["salespersons"] = service.get_salesperson_performance(
+            current_user, limit=5, branch_id=branch_id
+        )
+
+    if any(keyword in query_lower for keyword in ["مشتری", "customer"]):
+        context_data["top_customers"] = service.get_top_customers(
+            current_user, limit=5, branch_id=branch_id
+        )
+
+    if not context_data or any(
+        keyword in query_lower
+        for keyword in ["سود", "فروش", "درآمد", "عملکرد", "خلاصه", "متریک"]
+    ):
+        end_date = date.today()
+        start_date = end_date - timedelta(days=30)
+        context_data["metrics_last_30_days"] = service.get_summary_metrics(
+            current_user, start_date=start_date, end_date=end_date, branch_id=branch_id
+        )
+
+    ai_service = AIAssistantService()
+    answer = ai_service.chat_with_data(payload.query, context_data)
+
+    return AIChatResponse(answer=answer)

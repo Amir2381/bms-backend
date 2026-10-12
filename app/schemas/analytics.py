@@ -178,3 +178,11 @@ class BranchComparisonResponse(BaseModel):
 
 class AIInsightResponse(BaseModel):
     markdown_content: str
+
+
+class AIChatRequest(BaseModel):
+    query: str
+
+
+class AIChatResponse(BaseModel):
+    answer: str
