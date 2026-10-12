@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Iterator
 
 from fastapi import (
@@ -38,10 +38,6 @@ from app.schemas.analytics import (
     ChartDataset,
     ChartResponse,
     SalesVisualizationsResponse,
-)
-from app.services.analytics.service import AnalyticsService
-
-from app.schemas.analytics import (
     RFMCustomerItem,
     RFMSegmentationResponse,
     SalesForecastItem,
@@ -50,7 +46,10 @@ from app.schemas.analytics import (
     ProactiveInsightsResponse,
     BranchComparisonItem,
     BranchComparisonResponse,
+    AIInsightResponse,
 )
+from app.services.analytics.service import AnalyticsService
+from app.services.ai_assistant import AIAssistantService
 from app.worker.tasks import generate_report_task
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -648,3 +647,29 @@ def compare_branches(
             for c in result.comparisons
         ]
     )
+
+
+@router.get("/ai-insights", response_model=AIInsightResponse)
+@limiter.limit("5/minute")
+def get_ai_insights(
+    request: Request,
+    branch_id: int | None = Query(
+        None, description="Filter by specific branch ID (Admin only)"
+    ),
+    current_user: User = Depends(get_current_user),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    end_date = date.today()
+    start_date = end_date - timedelta(days=30)
+
+    metrics_data = service.get_summary_metrics(
+        current_user, start_date, end_date, branch_id
+    )
+    trend_data = service.get_sales_trend(
+        current_user, "daily", start_date, end_date, branch_id
+    )
+
+    ai_service = AIAssistantService()
+    insights_md = ai_service.generate_insights(metrics_data, trend_data)
+
+    return AIInsightResponse(markdown_content=insights_md)

@@ -14,6 +14,8 @@ class Settings(BaseSettings):
 
     import_max_file_size: int = 10 * 1024 * 1024
 
+    ai_api_key: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

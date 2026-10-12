@@ -174,3 +174,7 @@ class BranchComparisonItem(BaseModel):
 
 class BranchComparisonResponse(BaseModel):
     comparisons: List[BranchComparisonItem]
+
+
+class AIInsightResponse(BaseModel):
+    markdown_content: str
