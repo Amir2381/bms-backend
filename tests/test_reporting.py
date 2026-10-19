@@ -1,4 +1,6 @@
 import io
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
@@ -9,6 +11,7 @@ from app.services.reporting.excel_strategy import (
     MultiSheetExcelReportStrategy,
 )
 from app.services.reporting.generator import ReportGenerator
+from app.worker.celery_app import celery_app
 
 
 def test_csv_strategy_generation():
@@ -98,3 +101,46 @@ def test_export_dashboard_excel(client: TestClient):
     response = client.get("/analytics/dashboard/export")
     assert response.status_code == 200
     assert "job_id" in response.json()
+
+
+def test_async_report_status_and_download(client: TestClient, tmp_path: Path):
+    dummy_file = tmp_path / "test_report.csv"
+    dummy_file.write_text("id,name\n1,ProductA\n", encoding="utf-8")
+
+    mock_pending = MagicMock()
+    mock_pending.state = "PENDING"
+
+    with patch.object(celery_app, "AsyncResult", return_value=mock_pending):
+        status_res = client.get("/reports/status/job-pending")
+        assert status_res.status_code == 200
+        assert status_res.json() == {"status": "pending"}
+
+        dl_res = client.get("/reports/download/job-pending")
+        assert dl_res.status_code == 400
+
+    mock_success = MagicMock()
+    mock_success.state = "SUCCESS"
+    mock_success.result = {"status": "completed", "file_path": str(dummy_file)}
+
+    with patch.object(celery_app, "AsyncResult", return_value=mock_success):
+        status_res = client.get("/reports/status/job-success")
+        assert status_res.status_code == 200
+        assert status_res.json() == {
+            "status": "completed",
+            "download_url": "/reports/download/job-success",
+        }
+
+        dl_res = client.get("/reports/download/job-success")
+        assert dl_res.status_code == 200
+        assert "id,name" in dl_res.text
+
+    mock_missing_file = MagicMock()
+    mock_missing_file.state = "SUCCESS"
+    mock_missing_file.result = {
+        "status": "completed",
+        "file_path": str(tmp_path / "nonexistent.csv"),
+    }
+
+    with patch.object(celery_app, "AsyncResult", return_value=mock_missing_file):
+        dl_res = client.get("/reports/download/job-missing")
+        assert dl_res.status_code == 404
