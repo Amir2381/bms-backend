@@ -10,7 +10,6 @@ from app.services.analytics.types import SalesTrend, SummaryMetrics
 class AIAssistantService:
     def __init__(self) -> None:
         self.api_key = settings.ai_api_key
-        # استفاده از Base URL سازگار گوگل برای اتصال به Gemini از طریق کلاینت OpenAI
         self.client = (
             OpenAI(
                 api_key=self.api_key,
@@ -42,7 +41,7 @@ class AIAssistantService:
         )
 
         prompt = (
-            "You are an expert Chief Financial Officer (CFO) and Business Analyst. "
+            "System Instructions: You are a highly analytical AI CFO assistant and an expert Business Analyst. "
             "Analyze the following recent sales performance data and metrics for our retail business.\n\n"
             f"Data Context:\n{context}\n\n"
             "Your task is to provide actionable business insights based ONLY on the provided data.\n"
@@ -58,12 +57,8 @@ class AIAssistantService:
 
         try:
             response = self.client.chat.completions.create(
-                model="gemini-1.5-flash",
+                model="gemini-1.5-flash-latest",
                 messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a highly analytical AI CFO assistant.",
-                    },
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=800,
@@ -85,7 +80,7 @@ class AIAssistantService:
         )
 
         prompt = (
-            "You are a helpful and expert Business Data Assistant. "
+            "System Instructions: You are a direct, numbers-driven business data assistant. "
             "Answer the user's question accurately and concisely based ONLY on the provided Business Context JSON. "
             "If the answer cannot be found in the context, politely state that you don't have enough data to answer that specific question. "
             "Do not hallucinate or guess numbers.\n"
@@ -96,12 +91,8 @@ class AIAssistantService:
 
         try:
             response = self.client.chat.completions.create(
-                model="gemini-1.5-flash",
+                model="gemini-1.5-flash-latest",
                 messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a direct, numbers-driven business data assistant.",
-                    },
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=600,
