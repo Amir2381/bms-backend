@@ -1,18 +1,16 @@
 import json
 import socket
 import urllib.request
-import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
-from urllib.error import URLError, HTTPError
+from urllib.error import HTTPError, URLError
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.db.database import SessionLocal
 from app.models.system_alert import SystemAlert
 from app.models.user import User
 from app.repositories import sale_repository
-from app.worker.celery_app import celery_app
 from app.services.analytics.service import AnalyticsService
 from app.services.reporting.csv_strategy import CsvReportStrategy
 from app.services.reporting.excel_strategy import (
@@ -20,6 +18,7 @@ from app.services.reporting.excel_strategy import (
     MultiSheetExcelReportStrategy,
 )
 from app.services.reporting.generator import ReportGenerator
+from app.worker.celery_app import celery_app
 
 
 @celery_app.task
@@ -76,6 +75,13 @@ def check_at_risk_customers():
         db.commit()
 
 
+@celery_app.task
+def refresh_daily_sales_view():
+    with SessionLocal() as db:
+        db.execute(text("REFRESH MATERIALIZED VIEW daily_branch_sales_mv"))
+        db.commit()
+
+
 @celery_app.task(bind=True, max_retries=5)
 def send_webhook_event(self, url: str, payload: dict):
     data = json.dumps(payload).encode("utf-8")
@@ -107,7 +113,7 @@ def generate_report_task(self, report_type: str, user_id: int, params: dict):
     file_path = reports_dir / f"{job_id}.{extension}"
 
     with SessionLocal() as db:
-        current_user = db.query(User).get(user_id)
+        current_user = db.get(User, user_id)
         if not current_user:
             return {"status": "failed", "error": "User not found"}
 
@@ -226,7 +232,7 @@ def generate_report_task(self, report_type: str, user_id: int, params: dict):
                 data = [
                     {
                         "Period": p.period.isoformat(),
-                        "Revenue": str(p.revenue),
+                        "Revenue": str(point_rev := p.revenue),
                         "Transaction Count": p.transaction_count,
                     }
                     for p in trend_data.points

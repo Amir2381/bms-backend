@@ -23,4 +23,8 @@ celery_app.conf.beat_schedule = {
         "task": "app.worker.tasks.check_at_risk_customers",
         "schedule": crontab(minute=0, hour=0),
     },
+    "refresh-daily-sales-view-1am": {
+        "task": "app.worker.tasks.refresh_daily_sales_view",
+        "schedule": crontab(minute=0, hour=1),
+    },
 }

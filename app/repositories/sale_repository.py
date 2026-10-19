@@ -1,8 +1,18 @@
 import datetime
 from decimal import Decimal
 
-from sqlalchemy import Date as SqlDate, Numeric, case
-from sqlalchemy import Select, cast, func
+from sqlalchemy import (
+    Date as SqlDate,
+    Integer,
+    Numeric,
+    Select,
+    case,
+    cast,
+    column,
+    func,
+    table,
+    text,
+)
 from sqlalchemy.orm import Session, aliased, joinedload
 
 from app.models.branch import Branch
@@ -11,6 +21,15 @@ from app.models.customer import Customer
 from app.models.product import Product
 from app.models.sales import Sale, SaleItem
 from app.models.user import User
+
+daily_branch_sales_mv = table(
+    "daily_branch_sales_mv",
+    column("sale_date", SqlDate),
+    column("branch_id", Integer),
+    column("total_revenue", Numeric),
+    column("total_profit", Numeric),
+    column("transaction_count", Integer),
+)
 
 
 def create_sale(db: Session, sale: Sale) -> Sale:
@@ -198,6 +217,32 @@ def get_summary_metrics(
     }
 
 
+def _query_sales_trend_mv(
+    db: Session,
+    start_date: datetime.date | None = None,
+    end_date: datetime.date | None = None,
+    branch_id: int | None = None,
+):
+    stmt = Select(
+        daily_branch_sales_mv.c.sale_date.label("period"),
+        func.sum(daily_branch_sales_mv.c.total_revenue).label("revenue"),
+        func.sum(daily_branch_sales_mv.c.transaction_count).label("transaction_count"),
+    ).select_from(daily_branch_sales_mv)
+
+    if start_date:
+        stmt = stmt.where(daily_branch_sales_mv.c.sale_date >= start_date)
+    if end_date:
+        stmt = stmt.where(daily_branch_sales_mv.c.sale_date <= end_date)
+    if branch_id is not None:
+        stmt = stmt.where(daily_branch_sales_mv.c.branch_id == branch_id)
+
+    stmt = stmt.group_by(daily_branch_sales_mv.c.sale_date).order_by(
+        daily_branch_sales_mv.c.sale_date
+    )
+
+    return db.execute(stmt).all()
+
+
 def get_sales_trend(
     db: Session,
     period: str = "daily",
@@ -205,34 +250,16 @@ def get_sales_trend(
     end_date: datetime.date | None = None,
     branch_id: int | None = None,
 ) -> list[dict]:
-    stmt = (
-        Select(
-            cast(Sale.sale_date, SqlDate).label("period"),
-            func.sum(SaleItem.quantity * SaleItem.unit_price).label("revenue"),
-            func.count(func.distinct(Sale.id)).label("transaction_count"),
-        )
-        .select_from(Sale)
-        .join(SaleItem, Sale.id == SaleItem.sale_id)
-    )
-
-    if start_date:
-        stmt = stmt.where(cast(Sale.sale_date, SqlDate) >= start_date)
-    if end_date:
-        stmt = stmt.where(cast(Sale.sale_date, SqlDate) <= end_date)
-    if branch_id is not None:
-        stmt = stmt.where(Sale.branch_id == branch_id)
-
-    stmt = stmt.group_by(cast(Sale.sale_date, SqlDate)).order_by(
-        cast(Sale.sale_date, SqlDate)
-    )
-
-    rows = db.execute(stmt).all()
+    rows = _query_sales_trend_mv(db, start_date, end_date, branch_id)
+    if not rows:
+        db.execute(text("REFRESH MATERIALIZED VIEW daily_branch_sales_mv"))
+        rows = _query_sales_trend_mv(db, start_date, end_date, branch_id)
 
     return [
         {
             "period": row.period,
             "revenue": Decimal(row.revenue) if row.revenue else Decimal("0.0"),
-            "transaction_count": row.transaction_count,
+            "transaction_count": int(row.transaction_count or 0),
         }
         for row in rows
     ]

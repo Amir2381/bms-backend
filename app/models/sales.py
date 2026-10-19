@@ -1,16 +1,16 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Numeric, Index
+from sqlalchemy import DDL, ForeignKey, Index, Numeric, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
 
 if TYPE_CHECKING:
-    from app.models.product import Product
-    from app.models.user import User
     from app.models.branch import Branch
     from app.models.customer import Customer
+    from app.models.product import Product
+    from app.models.user import User
 
 
 class Sale(Base):
@@ -62,3 +62,26 @@ class SaleItem(Base):
     product: Mapped["Product"] = relationship(
         back_populates="sale_items",
     )
+
+
+create_daily_branch_sales_mv = DDL("""
+    CREATE MATERIALIZED VIEW IF NOT EXISTS daily_branch_sales_mv AS
+    SELECT
+        CAST(s.sale_date AS DATE) AS sale_date,
+        s.branch_id AS branch_id,
+        COALESCE(SUM(si.quantity * si.unit_price), 0) AS total_revenue,
+        COALESCE(SUM(si.quantity * (si.unit_price - si.cost_price)), 0) AS total_profit,
+        COUNT(DISTINCT s.id) AS transaction_count
+    FROM sales s
+    JOIN sale_items si ON s.id = si.sale_id
+    GROUP BY CAST(s.sale_date AS DATE), s.branch_id;
+    CREATE UNIQUE INDEX IF NOT EXISTS ix_daily_branch_sales_mv_date_branch
+    ON daily_branch_sales_mv (sale_date, branch_id);
+    """)
+
+drop_daily_branch_sales_mv = DDL(
+    "DROP MATERIALIZED VIEW IF EXISTS daily_branch_sales_mv CASCADE;"
+)
+
+event.listen(Base.metadata, "after_create", create_daily_branch_sales_mv)
+event.listen(Base.metadata, "before_drop", drop_daily_branch_sales_mv)
