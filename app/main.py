@@ -24,6 +24,7 @@ from app.routers import (
     analytics,
     api_keys,
     auth,
+    audit_logs,
     branches,
     categories,
     customers,
@@ -31,6 +32,7 @@ from app.routers import (
     products,
     reports,
     sales,
+    system_alerts,
     users,
     webhooks,
     health,
@@ -63,10 +65,12 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(auth.router)
 app.include_router(api_keys.router)
+app.include_router(audit_logs.router)
 app.include_router(branches.router)
 app.include_router(categories.router)
 app.include_router(products.router)
 app.include_router(sales.router)
+app.include_router(system_alerts.router)
 app.include_router(users.router)
 app.include_router(data_import.router)
 app.include_router(analytics.router)
