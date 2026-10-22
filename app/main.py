@@ -24,6 +24,7 @@ from app.routers import (
     analytics,
     api_keys,
     auth,
+    branches,
     categories,
     customers,
     data_import,
@@ -62,6 +63,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(auth.router)
 app.include_router(api_keys.router)
+app.include_router(branches.router)
 app.include_router(categories.router)
 app.include_router(products.router)
 app.include_router(sales.router)
