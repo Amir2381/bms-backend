@@ -47,6 +47,37 @@ setup_logging()
 
 logger = logging.getLogger("bms")
 
+tags_metadata = [
+    {
+        "name": "Auth",
+        "description": "Operations with user authentication. Includes login, logout, and token refresh.",
+    },
+    {
+        "name": "Users",
+        "description": "User management operations. Restricted to Administrators.",
+    },
+    {
+        "name": "Products",
+        "description": "Manage products, inventory, and pricing.",
+    },
+    {
+        "name": "Sales",
+        "description": "Record and manage sales transactions securely.",
+    },
+    {
+        "name": "analytics",
+        "description": "Core BI features, dashboards, and AI-powered data insights.",
+    },
+    {
+        "name": "Data Import",
+        "description": "Batch processing and data importing from Excel/CSV files.",
+    },
+    {
+        "name": "System Alerts",
+        "description": "Critical inventory and system status notifications.",
+    },
+]
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,7 +89,17 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title="BMS (Business Management System) API",
+    description="A powerful, highly scalable Business Intelligence & Sales Management API.",
+    version="1.0.0",
+    openapi_tags=tags_metadata,
+    contact={
+        "name": "Backend Team",
+        "email": "dev@bms.local",
+    },
+    lifespan=lifespan,
+)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -263,8 +304,9 @@ async def log_request_middleware(
     return response
 
 
-@app.get("/me")
+@app.get("/me", tags=["Auth"])
 def get_me(
     current_user: User = Depends(get_current_user),
 ):
+    """Get the currently authenticated user's profile and branch info."""
     return current_user
