@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, Iterable, Iterator
 
@@ -14,7 +15,7 @@ from app.services.reporting.generator import ReportGenerator
 
 def cleanup_temp_file(path: str) -> None:
     try:
-        os.unlink(path)
+        Path(path).unlink(missing_ok=True)
     except Exception:
         pass
 

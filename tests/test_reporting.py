@@ -144,3 +144,34 @@ def test_async_report_status_and_download(client: TestClient, tmp_path: Path):
     with patch.object(celery_app, "AsyncResult", return_value=mock_missing_file):
         dl_res = client.get("/reports/download/job-missing")
         assert dl_res.status_code == 404
+
+
+def test_concurrent_report_downloads(client: TestClient, tmp_path: Path):
+    import concurrent.futures
+
+    def mock_async_result(job_id):
+        dummy_file = tmp_path / f"{job_id}.csv"
+        dummy_file.write_text("id,val\n1,100\n", encoding="utf-8")
+
+        mock_res = MagicMock()
+        mock_res.state = "SUCCESS"
+        mock_res.result = {"status": "completed", "file_path": str(dummy_file)}
+        return mock_res
+
+    def trigger_download(job_id):
+        res = client.get(f"/reports/download/{job_id}")
+        return res, tmp_path / f"{job_id}.csv"
+
+    with patch(
+        "app.routers.reports.celery_app.AsyncResult", side_effect=mock_async_result
+    ):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [
+                executor.submit(trigger_download, f"job-stress-{i}") for i in range(10)
+            ]
+
+            for future in concurrent.futures.as_completed(futures):
+                res, file_path = future.result()
+                assert res.status_code == 200
+                assert "id,val" in res.text
+                assert not file_path.exists(), "Temporary file was not cleaned up!"

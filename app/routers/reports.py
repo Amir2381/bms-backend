@@ -1,10 +1,11 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 
 from app.core.security import get_current_user
 from app.worker.celery_app import celery_app
+from app.services.reporting.utils import iter_file_and_cleanup
 
 router = APIRouter(
     prefix="/reports", tags=["Reports"], dependencies=[Depends(get_current_user)]
@@ -36,6 +37,14 @@ def download_report(job_id: str):
         raise HTTPException(status_code=404, detail="File not found.")
 
     filename = Path(file_path).name
-    return FileResponse(
-        path=file_path, filename=filename, content_disposition_type="attachment"
+    media_type = (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        if filename.endswith(".xlsx")
+        else "text/csv"
+    )
+
+    return StreamingResponse(
+        iter_file_and_cleanup(file_path),
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
