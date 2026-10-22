@@ -527,3 +527,43 @@ def test_compare_branches_stress(client: TestClient):
 
     for res in results:
         assert res.status_code == 200
+
+
+def test_get_sales_trends_periods(client: TestClient):
+    db = TestingSessionLocal()
+    from datetime import timedelta
+
+    try:
+        today = datetime.now(timezone.utc)
+
+        sale1 = Sale(user_id=1, branch_id=1, sale_date=today)
+        sale2 = Sale(user_id=1, branch_id=1, sale_date=today - timedelta(days=10))
+        db.add_all([sale1, sale2])
+        db.commit()
+
+        db.add_all(
+            [
+                SaleItem(
+                    sale_id=sale1.id,
+                    product_id=1,
+                    quantity=1,
+                    unit_price=Decimal("100.0"),
+                ),
+                SaleItem(
+                    sale_id=sale2.id,
+                    product_id=1,
+                    quantity=1,
+                    unit_price=Decimal("200.0"),
+                ),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    for period in ["weekly", "monthly", "yearly"]:
+        response = client.get(f"/analytics/trends?period={period}")
+        assert response.status_code == 200
+        data = response.json()
+        assert "trends" in data
+        assert len(data["trends"]) >= 1

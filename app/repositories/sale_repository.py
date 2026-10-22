@@ -219,12 +219,26 @@ def get_summary_metrics(
 
 def _query_sales_trend_mv(
     db: Session,
+    period: str = "daily",
     start_date: datetime.date | None = None,
     end_date: datetime.date | None = None,
     branch_id: int | None = None,
 ):
+    period_map = {
+        "daily": "day",
+        "weekly": "week",
+        "monthly": "month",
+        "yearly": "year",
+    }
+    trunc_period = period_map.get(period.lower(), "day")
+
+    # استفاده از date_trunc پستگرس برای ساختاربندی بازه‌های زمانی
+    trunc_date = cast(
+        func.date_trunc(trunc_period, daily_branch_sales_mv.c.sale_date), SqlDate
+    )
+
     stmt = Select(
-        daily_branch_sales_mv.c.sale_date.label("period"),
+        trunc_date.label("period"),
         func.sum(daily_branch_sales_mv.c.total_revenue).label("revenue"),
         func.sum(daily_branch_sales_mv.c.transaction_count).label("transaction_count"),
     ).select_from(daily_branch_sales_mv)
@@ -236,9 +250,7 @@ def _query_sales_trend_mv(
     if branch_id is not None:
         stmt = stmt.where(daily_branch_sales_mv.c.branch_id == branch_id)
 
-    stmt = stmt.group_by(daily_branch_sales_mv.c.sale_date).order_by(
-        daily_branch_sales_mv.c.sale_date
-    )
+    stmt = stmt.group_by(trunc_date).order_by(trunc_date)
 
     return db.execute(stmt).all()
 
@@ -250,10 +262,10 @@ def get_sales_trend(
     end_date: datetime.date | None = None,
     branch_id: int | None = None,
 ) -> list[dict]:
-    rows = _query_sales_trend_mv(db, start_date, end_date, branch_id)
+    rows = _query_sales_trend_mv(db, period, start_date, end_date, branch_id)
     if not rows:
         db.execute(text("REFRESH MATERIALIZED VIEW daily_branch_sales_mv"))
-        rows = _query_sales_trend_mv(db, start_date, end_date, branch_id)
+        rows = _query_sales_trend_mv(db, period, start_date, end_date, branch_id)
 
     return [
         {

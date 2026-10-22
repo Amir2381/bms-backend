@@ -80,7 +80,11 @@ def get_summary_metrics(
 @limiter.limit("20/minute")
 def get_sales_trends(
     request: Request,
-    period: str = Query("daily", description="Time period for the trend"),
+    period: str = Query(
+        "daily",
+        pattern="^(daily|weekly|monthly|yearly)$",
+        description="Time period for the trend",
+    ),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     branch_id: int | None = Query(
@@ -109,7 +113,11 @@ def get_sales_trends(
 @limiter.limit("20/minute")
 def export_sales_trends(
     request: Request,
-    period: str = Query("daily", description="Time period for the trend"),
+    period: str = Query(
+        "daily",
+        pattern="^(daily|weekly|monthly|yearly)$",
+        description="Time period for the trend",
+    ),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     branch_id: int | None = Query(
@@ -410,7 +418,11 @@ def get_inventory_alerts(
 @cache(expire=300, namespace="dashboard", key_builder=branch_key_builder)
 def get_dashboard_data(
     request: Request,
-    period: str = Query("daily", description="Time period for the trend"),
+    period: str = Query(
+        "daily",
+        pattern="^(daily|weekly|monthly|yearly)$",
+        description="Time period for the trend",
+    ),
     start_date: date | None = Query(None, description="Start date for filtering"),
     end_date: date | None = Query(None, description="End date for filtering"),
     branch_id: int | None = Query(
