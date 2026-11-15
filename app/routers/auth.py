@@ -18,6 +18,7 @@ from app.db.database import get_db
 from app.models.user import User
 from app.repositories import user_repository
 from app.schemas.auth import LogoutRequest, RefreshTokenRequest
+from app.schemas.user import UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -112,3 +113,10 @@ def logout_all(
     blacklist_token(token)
     sync_redis.delete(f"user_sessions:{current_user.id}")
     return {"message": "Logged out from all devices successfully"}
+
+
+@router.get("/me", response_model=UserResponse)
+def get_current_user_profile(
+    current_user: User = Depends(get_current_user),
+):
+    return current_user

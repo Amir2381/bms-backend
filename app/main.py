@@ -1,6 +1,7 @@
 import logging
 import uuid
 import sys
+import time
 
 from contextlib import asynccontextmanager
 from fastapi_cache import FastAPICache
@@ -101,25 +102,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-app.include_router(auth.router)
-app.include_router(api_keys.router)
-app.include_router(audit_logs.router)
-app.include_router(branches.router)
-app.include_router(categories.router)
-app.include_router(products.router)
-app.include_router(sales.router)
-app.include_router(system_alerts.router)
-app.include_router(users.router)
-app.include_router(data_import.router)
-app.include_router(analytics.router)
-app.include_router(customers.router)
-app.include_router(webhooks.router)
-app.include_router(reports.router)
-app.include_router(health.router)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -129,184 +111,80 @@ app.add_middleware(
 )
 
 
-@app.exception_handler(HTTPException)
-def http_error_handler(
-    request: Request,
-    exc: HTTPException,
-):
-    logger.warning(
-        "HTTP error",
-        extra={
-            "request_id": request.state.request_id,
-            "status_code": exc.status_code,
-            "path": request.url.path,
-            "method": request.method,
-            "error": str(exc.detail),
-        },
-    )
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "success": False,
-            "error": exc.detail,
-        },
-    )
-
-
-@app.exception_handler(RequestValidationError)
-def validation_error_handler(
-    request: Request,
-    exc: RequestValidationError,
-):
-    logger.warning(
-        "Validation error",
-        extra={
-            "request_id": request.state.request_id,
-            "path": request.url.path,
-            "method": request.method,
-        },
-    )
-
-    return JSONResponse(
-        status_code=422,
-        content={
-            "success": False,
-            "error": "Invalid input",
-            "detail": exc.errors(),
-        },
-    )
-
-
-@app.exception_handler(ImportedProductNotFoundError)
-def imported_product_not_found_handler(
-    request: Request,
-    exc: ImportedProductNotFoundError,
-):
-    logger.warning(
-        "Import product not found",
-        extra={
-            "request_id": request.state.request_id,
-            "path": request.url.path,
-            "method": request.method,
-            "error": str(exc),
-        },
-    )
-
-    return JSONResponse(
-        status_code=404,
-        content={
-            "success": False,
-            "error": str(exc),
-        },
-    )
-
-
-@app.exception_handler(ImportedSellerNotFoundError)
-def imported_seller_not_found_handler(
-    request: Request,
-    exc: ImportedSellerNotFoundError,
-):
-    logger.warning(
-        "Import seller not found",
-        extra={
-            "request_id": request.state.request_id,
-            "path": request.url.path,
-            "method": request.method,
-            "error": str(exc),
-        },
-    )
-
-    return JSONResponse(
-        status_code=404,
-        content={
-            "success": False,
-            "error": str(exc),
-        },
-    )
-
-
-@app.exception_handler(ImportError)
-def import_error_handler(
-    request: Request,
-    exc: ImportError,
-):
-    logger.warning(
-        "Import error",
-        extra={
-            "request_id": request.state.request_id,
-            "path": request.url.path,
-            "method": request.method,
-            "error": str(exc),
-        },
-    )
-
-    return JSONResponse(
-        status_code=400,
-        content={
-            "success": False,
-            "error": str(exc),
-        },
-    )
-
-
-@app.exception_handler(Exception)
-def general_error_handler(
-    request: Request,
-    exc: Exception,
-):
-    logger.exception(
-        "Unhandled exception",
-        extra={
-            "request_id": request.state.request_id,
-            "path": request.url.path,
-            "method": request.method,
-        },
-    )
-
-    return JSONResponse(
-        status_code=500,
-        content={
-            "success": False,
-            "error": "Internal server error",
-        },
-    )
-
-
 @app.middleware("http")
-async def log_request_middleware(
-    request: Request,
-    call_next,
-):
-    request.state.request_id = str(uuid.uuid4())
-
-    logger.info(
-        "Request started",
-        extra={
-            "request_id": request.state.request_id,
-            "method": request.method,
-            "path": request.url.path,
-        },
-    )
+async def log_requests(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    start_time = time.time()
 
     response = await call_next(request)
 
+    process_time = time.time() - start_time
     logger.info(
-        "Request completed",
+        f"Request completed",
         extra={
-            "request_id": request.state.request_id,
-            "method": request.method,
+            "request_id": request_id,
             "path": request.url.path,
+            "method": request.method,
             "status_code": response.status_code,
+            "process_time": round(process_time, 4),
         },
     )
-
     return response
 
 
-@app.get("/me", tags=["Auth"])
-def get_me(
-    current_user: User = Depends(get_current_user),
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        f"Unhandled exception",
+        exc_info=exc,
+        extra={
+            "request_id": getattr(request.state, "request_id", None),
+            "path": request.url.path,
+            "method": request.method,
+        },
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(ImportedProductNotFoundError)
+async def imported_product_not_found_handler(
+    request: Request, exc: ImportedProductNotFoundError
 ):
-    """Get the currently authenticated user's profile and branch info."""
-    return current_user
+    return JSONResponse(status_code=404, content={"success": False, "error": str(exc)})
+
+
+@app.exception_handler(ImportedSellerNotFoundError)
+async def imported_seller_not_found_handler(
+    request: Request, exc: ImportedSellerNotFoundError
+):
+    return JSONResponse(status_code=404, content={"success": False, "error": str(exc)})
+
+
+@app.exception_handler(ImportError)
+async def import_error_handler(request: Request, exc: ImportError):
+    return JSONResponse(status_code=400, content={"success": False, "error": str(exc)})
+
+
+app.include_router(auth.router)
+app.include_router(api_keys.router)
+app.include_router(audit_logs.router)
+app.include_router(branches.router)
+app.include_router(categories.router)
+app.include_router(customers.router)
+app.include_router(data_import.router)
+app.include_router(products.router)
+app.include_router(reports.router)
+app.include_router(sales.router)
+app.include_router(system_alerts.router)
+app.include_router(users.router)
+app.include_router(webhooks.router)
+app.include_router(health.router)
+app.include_router(analytics.router)

@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { PublicRoute } from '@/components/PublicRoute'
+import { Login } from '@/features/auth/Login'
 
-const Login = () => <div className="flex items-center justify-center h-screen">Login Page (Coming Soon)</div>
 const Dashboard = () => <div className="p-8">Dashboard (Coming Soon)</div>
 const NotFound = () => <div className="p-8 text-red-500">404 - Not Found</div>
 

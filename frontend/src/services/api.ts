@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-    baseURL: 'http://127.0.0.1:8000',
+    baseURL: 'http://localhost:8000',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -40,7 +40,12 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (
+            error.response?.status === 401 &&
+            !originalRequest._retry &&
+            originalRequest.url !== '/auth/login' &&
+            originalRequest.url !== '/auth/refresh'
+        ) {
             if (isRefreshing) {
                 return new Promise(function (resolve, reject) {
                     failedQueue.push({ resolve, reject })
@@ -65,7 +70,7 @@ api.interceptors.response.use(
 
             try {
                 const { data } = await axios.post(
-                    'http://127.0.0.1:8000/auth/refresh',
+                    'http://localhost:8000/auth/refresh',
                     { refresh_token: refreshToken }
                 )
 
