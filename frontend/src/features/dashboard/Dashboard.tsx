@@ -2,6 +2,8 @@ import { useDashboardData } from '@/hooks/useDashboardData'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DollarSign, ShoppingCart, Activity, TrendingUp } from 'lucide-react'
+import { SalesChart } from './SalesChart'
+import { TopProductsChart } from './TopProductsChart'
 
 export const Dashboard = () => {
     const { data, isLoading, isError } = useDashboardData()
@@ -31,18 +33,22 @@ export const Dashboard = () => {
                         </Card>
                     ))}
                 </div>
-                <Skeleton className="h-[300px] w-full rounded-xl" />
+                <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-4">
+                    <Skeleton className="h-[380px] w-full rounded-xl col-span-1 lg:col-span-2" />
+                    <Skeleton className="h-[380px] w-full rounded-xl col-span-1 lg:col-span-2" />
+                </div>
             </div>
         )
     }
 
-    const { metrics } = data
+    const { metrics, trends, top_products } = data
 
     return (
         <div className="space-y-6">
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">داشبورد خلاصه عملکرد</h2>
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
+                <Card className="shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">فروش کل</CardTitle>
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -51,7 +57,7 @@ export const Dashboard = () => {
                         <div className="text-2xl font-bold">{metrics.total_sales.toLocaleString()} $</div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">سود خالص</CardTitle>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -63,7 +69,7 @@ export const Dashboard = () => {
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">تعداد تراکنش‌ها</CardTitle>
                         <ShoppingCart className="h-4 w-4 text-muted-foreground" />
@@ -72,7 +78,7 @@ export const Dashboard = () => {
                         <div className="text-2xl font-bold">{metrics.total_transactions}</div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">ارزش میانگین سفارش</CardTitle>
                         <Activity className="h-4 w-4 text-muted-foreground" />
@@ -83,8 +89,9 @@ export const Dashboard = () => {
                 </Card>
             </div>
 
-            <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 flex items-center justify-center h-64 text-muted-foreground">
-                نمودارهای بصری در روز ششم اینجا قرار می‌گیرند...
+            <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-4">
+                <SalesChart data={trends.trends} />
+                <TopProductsChart data={top_products.products} />
             </div>
         </div>
     )
