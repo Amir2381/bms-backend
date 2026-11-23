@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import api from '@/services/api'
+import { useAuthStore } from '@/store/authStore'
 
 export const Login = () => {
     const [email, setEmail] = useState('')
@@ -12,6 +13,7 @@ export const Login = () => {
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
+    const checkAuth = useAuthStore((state) => state.checkAuth)
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -29,6 +31,8 @@ export const Login = () => {
 
             localStorage.setItem('access_token', response.data.access_token)
             localStorage.setItem('refresh_token', response.data.refresh_token)
+
+            await checkAuth()
 
             navigate('/')
         } catch (err: any) {

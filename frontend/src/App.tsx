@@ -4,13 +4,9 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { PublicRoute } from '@/components/PublicRoute'
 import { Login } from '@/features/auth/Login'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { Dashboard } from '@/features/dashboard/Dashboard'
 import { useAuthStore } from '@/store/authStore'
 
-const Dashboard = () => (
-  <div className="rounded-lg border bg-card p-8 shadow-sm" dir="rtl">
-    <h1 className="text-2xl font-bold">داشبورد (به زودی در روز پنجم...)</h1>
-  </div>
-)
 const NotFound = () => <div className="p-8 text-red-500 font-bold" dir="rtl">404 - صفحه پیدا نشد</div>
 
 function App() {
