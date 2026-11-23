@@ -6,18 +6,17 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import api from '@/services/api'
 import { useAuthStore } from '@/store/authStore'
+import { toast } from 'sonner'
 
 export const Login = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
     const checkAuth = useAuthStore((state) => state.checkAuth)
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
-        setError('')
         setLoading(true)
 
         try {
@@ -34,17 +33,18 @@ export const Login = () => {
 
             await checkAuth()
 
+            toast.success('با موفقیت وارد شدید')
             navigate('/')
         } catch (err: any) {
             console.error("Login Error:", err)
             if (err.response) {
                 const detail = err.response.data?.detail
                 const message = typeof detail === 'string' ? detail : JSON.stringify(detail)
-                setError(`خطای سرور (${err.response.status}): ${message || 'اطلاعات نامعتبر است'}`)
+                toast.error(`خطای سرور (${err.response.status}): ${message || 'اطلاعات نامعتبر است'}`)
             } else if (err.request) {
-                setError('خطای شبکه: سرور بک‌اند در دسترس نیست (Network Error)')
+                toast.error('خطای شبکه: سرور بک‌اند در دسترس نیست')
             } else {
-                setError(`خطای نامشخص: ${err.message}`)
+                toast.error(`خطا: ${err.message}`)
             }
         } finally {
             setLoading(false)
@@ -87,7 +87,6 @@ export const Login = () => {
                                 dir="ltr"
                             />
                         </div>
-                        {error && <div className="text-sm text-red-500 text-right font-medium">{error}</div>}
                         <Button type="submit" className="w-full" disabled={loading}>
                             {loading ? 'در حال ورود...' : 'ورود'}
                         </Button>

@@ -6,6 +6,7 @@ import { Login } from '@/features/auth/Login'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Dashboard } from '@/features/dashboard/Dashboard'
 import { useAuthStore } from '@/store/authStore'
+import { Toaster } from '@/components/ui/sonner'
 
 const NotFound = () => <div className="p-8 text-red-500 font-bold" dir="rtl">404 - صفحه پیدا نشد</div>
 
@@ -40,6 +41,7 @@ function App() {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <Toaster position="top-center" richColors dir="rtl" />
     </BrowserRouter>
   )
 }

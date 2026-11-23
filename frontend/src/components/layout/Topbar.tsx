@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Sidebar } from './Sidebar'
+import { toast } from 'sonner'
 
 export const Topbar = () => {
     const user = useAuthStore((state) => state.user)
@@ -30,6 +31,7 @@ export const Topbar = () => {
             console.error('Logout failed on server', error)
         } finally {
             logout()
+            toast.info('از سیستم خارج شدید')
             navigate('/login')
         }
     }
